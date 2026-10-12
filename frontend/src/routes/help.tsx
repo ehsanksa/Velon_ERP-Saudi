@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/accordion';
 import { Card } from '@/components/ui/card';
 import { loadPublicSiteContentSafe } from '@/lib/cms/load-public';
+import { useT } from '@/lib/i18n/locale-context';
 
 export const Route = createFileRoute('/help')({
   loader: () => loadPublicSiteContentSafe(),
@@ -17,6 +18,7 @@ export const Route = createFileRoute('/help')({
 function HelpPage() {
   const siteContent = Route.useLoaderData();
   const faqItems = siteContent.faq.items;
+  const t = useT();
 
   return (
     <MarketingPageShell
@@ -36,8 +38,8 @@ function HelpPage() {
               key={item.q}
               value={`faq-${index}`}
             >
-              <AccordionTrigger>{item.q}</AccordionTrigger>
-              <AccordionContent>{item.a}</AccordionContent>
+              <AccordionTrigger>{t(item.q)}</AccordionTrigger>
+              <AccordionContent>{t(item.a)}</AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>

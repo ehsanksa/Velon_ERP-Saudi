@@ -4,6 +4,7 @@ import { SiteFooter } from '@/components/marketing/site-footer';
 import { SiteHeader } from '@/components/marketing/site-header';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { useT } from '@/lib/i18n/locale-context';
 import { cn } from '@/lib/utils';
 
 export type LegalSection = {
@@ -29,6 +30,8 @@ export function LegalPageLayout({
   sections: LegalSection[];
   relatedLinks: { label: string; to: string }[];
 }) {
+  const t = useT();
+
   return (
     <div className="bg-background min-h-screen">
       <SiteHeader />
@@ -38,12 +41,12 @@ export function LegalPageLayout({
             variant="outline"
             className="border-border bg-background/80 rounded-full"
           >
-            {label}
+            {t(label)}
           </Badge>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">{title}</h1>
-          <p className="text-muted-foreground mt-4">{description}</p>
+          <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">{t(title)}</h1>
+          <p className="text-muted-foreground mt-4">{t(description)}</p>
           <p className="text-muted-foreground mt-3 text-xs">
-            Effective: {effectiveDate} · Last updated: {lastUpdated}
+            {t('Effective')}: {t(effectiveDate)} · {t('Last updated')}: {t(lastUpdated)}
           </p>
         </div>
       </section>
@@ -52,7 +55,7 @@ export function LegalPageLayout({
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <Card className="border-border bg-card p-4">
             <p className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
-              On this page
+              {t('On this page')}
             </p>
             <nav className="flex flex-col gap-1 text-sm">
               {sections.map((s) => (
@@ -61,12 +64,12 @@ export function LegalPageLayout({
                   href={`#${s.id}`}
                   className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-md px-2 py-1.5 transition"
                 >
-                  {s.title}
+                  {t(s.title)}
                 </a>
               ))}
             </nav>
             <div className="border-border text-muted-foreground mt-4 border-t pt-4 text-xs">
-              Related:
+              {t('Related')}:
               <ul className="mt-2 space-y-1">
                 {relatedLinks.map((l) => (
                   <li key={l.to}>
@@ -74,7 +77,7 @@ export function LegalPageLayout({
                       to={l.to}
                       className="text-foreground font-medium hover:underline"
                     >
-                      {l.label}
+                      {t(l.label)}
                     </Link>
                   </li>
                 ))}
@@ -90,7 +93,7 @@ export function LegalPageLayout({
               id={section.id}
               className="scroll-mt-24"
             >
-              <h2 className="text-xl font-semibold tracking-tight">{section.title}</h2>
+              <h2 className="text-xl font-semibold tracking-tight">{t(section.title)}</h2>
               <div
                 className={cn(
                   'prose prose-sm text-muted-foreground mt-4 max-w-none',

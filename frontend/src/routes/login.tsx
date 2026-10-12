@@ -33,6 +33,7 @@ import {
 import { isPasswordStrong } from '@/lib/auth/password-policy';
 import { redirectIfWorkspaceAuthenticated } from '@/lib/auth/route-guard';
 import { saveSession } from '@/lib/auth/session';
+import { useT } from '@/lib/i18n/locale-context';
 import { saveWorkspaceName } from '@/lib/workspace/tenant-workspace';
 import { bootstrapWorkspaceUser } from '@/lib/workspace/user-profile';
 
@@ -81,10 +82,11 @@ function WorkspaceLoginPage() {
   const search = Route.useSearch();
   const router = useRouter();
   const useApi = isApiEnabled();
+  const t = useT();
 
   useEffect(() => {
     if (search.reset === 'success') {
-      toast.success('Password successfully updated. Please sign in.');
+      toast.success(t('Password successfully updated. Please sign in.'));
       void router.navigate({ to: '/login', search: loginSearch(), replace: true });
     }
   }, [search.reset, router]);
@@ -147,9 +149,9 @@ function WorkspaceLoginPage() {
   async function onSignIn(e: React.FormEvent) {
     e.preventDefault();
     if (isSuperAdminEmail(signinEmail)) {
-      toast.error('Platform administrators must use the Super Admin gateway.', {
+      toast.error(t('Platform administrators must use the Super Admin gateway.'), {
         action: {
-          label: 'Open gateway',
+          label: t('Open gateway'),
           onClick: () => void router.navigate({ to: '/platform/login' }),
         },
       });
@@ -158,20 +160,20 @@ function WorkspaceLoginPage() {
     setBusy(true);
     try {
       if (!useApi) {
-        toast.error('Configure VITE_API_URL — demo auth was removed in Phase 2C.');
+        toast.error(t('Configure VITE_API_URL — demo auth was removed in Phase 2C.'));
         return;
       }
       const res = await apiLogin(signinEmail, signinPassword);
       if (res.route === 'admin') {
-        toast.error('Use the platform admin portal for Super Admin access.');
+        toast.error(t('Use the platform admin portal for Super Admin access.'));
         return;
       }
       saveWorkspaceSession(res, signinEmail);
       bootstrapWorkspaceUser({ email: signinEmail });
-      toast.success('Signed in to workspace');
+      toast.success(t('Signed in to workspace'));
       await router.navigate({ to: '/app' });
     } catch (err) {
-      toast.error(formatApiError(err, 'Sign in failed'));
+      toast.error(formatApiError(err, t('Sign in failed')));
     } finally {
       setBusy(false);
     }
@@ -180,11 +182,11 @@ function WorkspaceLoginPage() {
   async function completeSignup(verificationToken?: string) {
     try {
       if (!useApi) {
-        toast.error('Configure VITE_API_URL — demo signup was removed in Phase 2C.');
+        toast.error(t('Configure VITE_API_URL — demo signup was removed in Phase 2C.'));
         return;
       }
       if (!verificationToken) {
-        toast.error('Email verification required. Complete OTP verification first.');
+        toast.error(t('Email verification required. Complete OTP verification first.'));
         return;
       }
       const res = await apiSignUp({
@@ -206,31 +208,31 @@ function WorkspaceLoginPage() {
       saveWorkspaceName(companyName);
       bootstrapWorkspaceUser({ email: companyEmail, businessName: companyName, fullName });
       setSignupVerificationToken(null);
-      toast.success('Workspace created — add your logo for branded invoices');
+      toast.success(t('Workspace created — add your logo for branded invoices'));
       await router.navigate({
         to: '/app/settings/admin',
         search: { tab: 'general', section: 'company' },
       });
     } catch (err) {
-      toast.error(formatApiError(err, 'Could not create workspace'));
+      toast.error(formatApiError(err, t('Could not create workspace')));
     }
   }
 
   async function requestSignupOtpCode() {
     if (!companyName.trim() || !companyEmail.trim() || !fullName.trim()) {
-      toast.error('Complete all required company and owner fields first.');
+      toast.error(t('Complete all required company and owner fields first.'));
       return;
     }
     if (!localization.countryCode || !localization.currency) {
-      toast.error('Country and currency are required.');
+      toast.error(t('Country and currency are required.'));
       return;
     }
     if (!localization.address?.trim()) {
-      toast.error('Business address is required.');
+      toast.error(t('Business address is required.'));
       return;
     }
     if (!localization.timezone) {
-      toast.error('Timezone is required.');
+      toast.error(t('Timezone is required.'));
       return;
     }
     setBusy(true);
@@ -239,9 +241,11 @@ function WorkspaceLoginPage() {
       setSignupStep('otp');
       setSignupVerificationToken(null);
       setDevOtpHint(res.devCode ?? null);
-      toast.success(res.delivered ? 'OTP sent to your email' : 'OTP generated for local testing');
+      toast.success(
+        res.delivered ? t('OTP sent to your email') : t('OTP generated for local testing'),
+      );
     } catch (err) {
-      toast.error(formatApiError(err, 'Could not send OTP'));
+      toast.error(formatApiError(err, t('Could not send OTP')));
     } finally {
       setBusy(false);
     }
@@ -264,7 +268,7 @@ function WorkspaceLoginPage() {
       }
       await completeSignup(verificationToken);
     } catch (err) {
-      const message = formatApiError(err, 'Could not verify OTP');
+      const message = formatApiError(err, t('Could not verify OTP'));
       if (message.toLowerCase().includes('verification code')) {
         setSignupVerificationToken(null);
       }
@@ -286,19 +290,19 @@ function WorkspaceLoginPage() {
       complianceIcon={ShieldCheck}
       complianceText={
         <>
-          By continuing, you agree to our{' '}
+          {t('By continuing, you agree to our')}{' '}
           <Link
             to="/privacy"
             className="text-foreground"
           >
-            Privacy Policy
+            {t('Privacy Policy')}
           </Link>{' '}
-          and{' '}
+          {t('and')}{' '}
           <Link
             to="/terms"
             className="text-foreground"
           >
-            Terms of Service
+            {t('Terms of Service')}
           </Link>
           .
         </>
@@ -323,13 +327,13 @@ function WorkspaceLoginPage() {
             className="flex-1"
             value="signin"
           >
-            Sign In
+            {t('Sign In')}
           </TabsTrigger>
           <TabsTrigger
             className="flex-1"
             value="signup"
           >
-            Create Workspace
+            {t('Create Workspace')}
           </TabsTrigger>
         </TabsList>
         <TabsContent
@@ -341,7 +345,7 @@ function WorkspaceLoginPage() {
             onSubmit={onSignIn}
           >
             <Input
-              placeholder="Email"
+              placeholder={t('Email')}
               type="email"
               autoComplete="email"
               value={signinEmail}
@@ -349,7 +353,7 @@ function WorkspaceLoginPage() {
               required
             />
             <Input
-              placeholder="Password"
+              placeholder={t('Password')}
               type="password"
               autoComplete="current-password"
               value={signinPassword}
@@ -361,14 +365,14 @@ function WorkspaceLoginPage() {
               disabled={busy}
               className="bg-gradient-primary w-full text-white hover:opacity-95"
             >
-              {busy ? 'Signing in…' : 'Sign In'}
+              {busy ? t('Signing in…') : t('Sign In')}
             </Button>
             <div className="text-muted-foreground text-xs">
               <Link
                 to="/forgot-password"
                 className="text-foreground font-medium underline-offset-4 hover:underline"
               >
-                Forgot password?
+                {t('Forgot password?')}
               </Link>
             </div>
           </form>
@@ -383,13 +387,13 @@ function WorkspaceLoginPage() {
               onSubmit={onSignUp}
             >
               <Input
-                placeholder="Company name"
+                placeholder={t('Company name')}
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 required
               />
               <Input
-                placeholder="Company email"
+                placeholder={t('Company email')}
                 type="email"
                 autoComplete="email"
                 value={companyEmail}
@@ -397,7 +401,7 @@ function WorkspaceLoginPage() {
                 required
               />
               <Input
-                placeholder="Company phone"
+                placeholder={t('Company phone')}
                 type="tel"
                 autoComplete="tel"
                 value={companyPhone}
@@ -413,7 +417,7 @@ function WorkspaceLoginPage() {
                 idPrefix="signup"
               />
               <div className="space-y-1.5">
-                <Label htmlFor="signup-plan">Plan</Label>
+                <Label htmlFor="signup-plan">{t('Plan')}</Label>
                 <Select
                   value={plan}
                   onValueChange={(value) => {
@@ -425,7 +429,7 @@ function WorkspaceLoginPage() {
                     id="signup-plan"
                     className="h-10"
                   >
-                    <SelectValue placeholder="Select a plan" />
+                    <SelectValue placeholder={t('Select a plan')} />
                   </SelectTrigger>
                   <SelectContent>
                     {PLAN_CATALOG.map((opt) => (
@@ -433,15 +437,16 @@ function WorkspaceLoginPage() {
                         key={opt.id}
                         value={opt.id}
                       >
-                        {opt.displayName}
-                        {opt.seatLimit ? ` · ${opt.seatLimit} users` : ''}
+                        {t(opt.displayName)}
+                        {opt.seatLimit ? ` · ${t('{count} users', { count: opt.seatLimit })}` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-muted-foreground text-xs leading-relaxed">
-                  Starts as a free trial on {selectedPlan.displayName}. You can change plans later
-                  from billing.
+                  {t('Starts as a free trial on {plan}. You can change plans later from billing.', {
+                    plan: t(selectedPlan.displayName),
+                  })}
                 </p>
               </div>
               <Select
@@ -449,7 +454,7 @@ function WorkspaceLoginPage() {
                 onValueChange={setIndustry}
               >
                 <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Industry" />
+                  <SelectValue placeholder={t('Industry')} />
                 </SelectTrigger>
                 <SelectContent>
                   {INDUSTRY_OPTIONS.map((opt) => (
@@ -457,20 +462,20 @@ function WorkspaceLoginPage() {
                       key={opt.value}
                       value={opt.value}
                     >
-                      {opt.label}
+                      {t(opt.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Input
-                placeholder="Your full name"
+                placeholder={t('Your full name')}
                 autoComplete="name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
               />
               <Input
-                placeholder="Password (minimum 8 characters)"
+                placeholder={t('Password (minimum 8 characters)')}
                 type="password"
                 autoComplete="new-password"
                 value={signupPassword}
@@ -483,11 +488,12 @@ function WorkspaceLoginPage() {
                 disabled={busy || !isPasswordStrong(signupPassword)}
                 className="bg-gradient-primary w-full text-white hover:opacity-95"
               >
-                {busy ? 'Sending OTP…' : 'Verify email & continue'}
+                {busy ? t('Sending OTP…') : t('Verify email & continue')}
               </Button>
               <p className="text-muted-foreground text-xs leading-relaxed">
-                We verify your company email before creating the workspace. You become the Tenant
-                Super Admin for your company.
+                {t(
+                  'We verify your company email before creating the workspace. You become the Tenant Super Admin for your company.',
+                )}
               </p>
             </form>
           ) : (
@@ -496,18 +502,18 @@ function WorkspaceLoginPage() {
               onSubmit={onVerifySignupOtp}
             >
               <div className="border-border bg-muted/40 text-muted-foreground rounded-lg border p-3 text-xs">
-                Enter the 6-digit code sent to{' '}
-                <span className="text-foreground font-medium">{companyEmail}</span>. Creating a{' '}
-                <span className="text-foreground font-medium">{selectedPlan.displayName}</span>{' '}
-                trial workspace.
+                {t('Enter the 6-digit code sent to {email}. Creating a {plan} trial workspace.', {
+                  email: companyEmail,
+                  plan: t(selectedPlan.displayName),
+                })}
                 {devOtpHint ? (
                   <span className="text-foreground mt-1 block font-mono">
-                    Local dev OTP: {devOtpHint}
+                    {t('Local dev OTP: {code}', { code: devOtpHint })}
                   </span>
                 ) : null}
               </div>
               <Input
-                placeholder="6-digit OTP"
+                placeholder={t('6-digit OTP')}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={6}
@@ -520,7 +526,7 @@ function WorkspaceLoginPage() {
                 disabled={busy || signupOtp.length !== 6}
                 className="bg-gradient-primary w-full text-white hover:opacity-95"
               >
-                {busy ? 'Creating workspace…' : 'Verify OTP & create workspace'}
+                {busy ? t('Creating workspace…') : t('Verify OTP & create workspace')}
               </Button>
               <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-2 text-xs">
                 <button
@@ -533,7 +539,7 @@ function WorkspaceLoginPage() {
                     setDevOtpHint(null);
                   }}
                 >
-                  Edit details
+                  {t('Edit details')}
                 </button>
                 <button
                   type="button"
@@ -541,7 +547,7 @@ function WorkspaceLoginPage() {
                   onClick={requestSignupOtpCode}
                   disabled={busy}
                 >
-                  Resend OTP
+                  {t('Resend OTP')}
                 </button>
               </div>
             </form>

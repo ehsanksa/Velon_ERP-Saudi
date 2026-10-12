@@ -18,6 +18,7 @@ import {
   PASSWORD_RESET_GENERIC_MESSAGE,
 } from '@/lib/auth/password-reset-api';
 import { redirectIfWorkspaceAuthenticated } from '@/lib/auth/route-guard';
+import { useT } from '@/lib/i18n/locale-context';
 
 export const Route = createFileRoute('/forgot-password')({
   beforeLoad: () => {
@@ -52,6 +53,7 @@ const signals = [
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
+  const t = useT();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -65,7 +67,7 @@ function ForgotPasswordPage() {
   async function onSendOtp(e: React.FormEvent) {
     e.preventDefault();
     if (!isApiEnabled()) {
-      toast.error('Configure VITE_API_URL to use password reset.');
+      toast.error(t('Configure VITE_API_URL to use password reset.'));
       return;
     }
     setBusy(true);
@@ -76,9 +78,11 @@ function ForgotPasswordPage() {
       setStep('otp');
       setOtp('');
       setVerificationToken(null);
-      toast.success(res.delivered ? 'Verification code sent' : PASSWORD_RESET_GENERIC_MESSAGE);
+      toast.success(
+        res.delivered ? t('Verification code sent') : t(PASSWORD_RESET_GENERIC_MESSAGE),
+      );
     } catch (err) {
-      toast.error(formatApiError(err, 'Could not send verification code'));
+      toast.error(formatApiError(err, t('Could not send verification code')));
     } finally {
       setBusy(false);
     }
@@ -95,7 +99,7 @@ function ForgotPasswordPage() {
       setPassword('');
       setConfirm('');
     } catch (err) {
-      toast.error(formatApiError(err, 'Invalid verification code'));
+      toast.error(formatApiError(err, t('Invalid verification code')));
     } finally {
       setBusy(false);
     }
@@ -104,15 +108,15 @@ function ForgotPasswordPage() {
   async function onSavePassword(e: React.FormEvent) {
     e.preventDefault();
     if (!verificationToken) {
-      toast.error('Complete verification first.');
+      toast.error(t('Complete verification first.'));
       return;
     }
     if (!isPasswordStrong(password)) {
-      toast.error('Password does not meet all requirements.');
+      toast.error(t('Password does not meet all requirements.'));
       return;
     }
     if (password !== confirm) {
-      toast.error('Passphrases do not match.');
+      toast.error(t('Passphrases do not match.'));
       return;
     }
     setBusy(true);
@@ -120,7 +124,7 @@ function ForgotPasswordPage() {
       await apiCompletePasswordReset({ email, verificationToken, password });
       await navigate({ to: '/login', search: loginSearch({ reset: 'success' }) });
     } catch (err) {
-      toast.error(formatApiError(err, 'Could not reset password'));
+      toast.error(formatApiError(err, t('Could not reset password')));
     } finally {
       setBusy(false);
     }
@@ -189,7 +193,7 @@ function ForgotPasswordPage() {
             <Input
               type="email"
               autoComplete="email"
-              placeholder="Work email"
+              placeholder={t('Work email')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -199,7 +203,7 @@ function ForgotPasswordPage() {
               disabled={busy}
               className="bg-foreground text-background hover:bg-foreground/90 w-full"
             >
-              {busy ? 'Sending…' : 'Send OTP'}
+              {busy ? t('Sending…') : t('Send OTP')}
             </Button>
           </form>
         ) : null}
@@ -210,29 +214,31 @@ function ForgotPasswordPage() {
             onSubmit={onVerifyOtp}
           >
             {requestSent ? (
-              <p className="text-muted-foreground text-sm">{PASSWORD_RESET_GENERIC_MESSAGE}</p>
+              <p className="text-muted-foreground text-sm">{t(PASSWORD_RESET_GENERIC_MESSAGE)}</p>
             ) : null}
             <p className="text-muted-foreground text-xs">
-              Code sent to <span className="text-foreground font-medium">{email}</span>
+              {t('Code sent to')} <span className="text-foreground font-medium">{email}</span>
             </p>
             <Input
               inputMode="numeric"
               autoComplete="one-time-code"
-              placeholder="6-digit code"
+              placeholder={t('6-digit code')}
               maxLength={6}
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
               required
             />
             {devOtpHint ? (
-              <p className="text-muted-foreground text-xs">Dev code: {devOtpHint}</p>
+              <p className="text-muted-foreground text-xs">
+                {t('Dev code: {code}', { code: devOtpHint })}
+              </p>
             ) : null}
             <Button
               type="submit"
               disabled={busy || otp.length !== 6}
               className="bg-foreground text-background hover:bg-foreground/90 w-full"
             >
-              {busy ? 'Verifying…' : 'Verify code'}
+              {busy ? t('Verifying…') : t('Verify code')}
             </Button>
             <Button
               type="button"
@@ -245,7 +251,7 @@ function ForgotPasswordPage() {
                 setDevOtpHint(null);
               }}
             >
-              Use a different email
+              {t('Use a different email')}
             </Button>
           </form>
         ) : null}
@@ -256,7 +262,7 @@ function ForgotPasswordPage() {
             onSubmit={onSavePassword}
           >
             <div className="space-y-2">
-              <Label htmlFor="new-pass">New passphrase</Label>
+              <Label htmlFor="new-pass">{t('New passphrase')}</Label>
               <Input
                 id="new-pass"
                 type="password"
@@ -268,7 +274,7 @@ function ForgotPasswordPage() {
               <PasswordRequirementsChecklist password={password} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-pass">Confirm passphrase</Label>
+              <Label htmlFor="confirm-pass">{t('Confirm passphrase')}</Label>
               <Input
                 id="confirm-pass"
                 type="password"
@@ -285,7 +291,7 @@ function ForgotPasswordPage() {
               }
               className="bg-foreground text-background hover:bg-foreground/90 w-full"
             >
-              {busy ? 'Saving…' : 'Save password'}
+              {busy ? t('Saving…') : t('Save password')}
             </Button>
           </form>
         ) : null}

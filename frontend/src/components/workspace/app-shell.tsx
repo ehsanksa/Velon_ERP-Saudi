@@ -5,11 +5,13 @@ import { isAdminNavItemActive, isWorkspaceNavItemActive } from '@velon/shared';
 import { BrandLogoLink } from '@/components/marketing/brand-logo-link';
 import { SiteFooter } from '@/components/marketing/site-footer';
 import { VelonLogoMark } from '@/components/marketing/velon-logo-mark';
+import { LanguageSwitch } from '@/components/shared/language-switch';
 import { breadcrumbsFromPath, PageBreadcrumbs } from '@/components/shared/page-breadcrumbs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { useT } from '@/lib/i18n/locale-context';
 import type { LogoNav } from '@/lib/shared/logo-navigation';
 import { cn } from '@/lib/utils';
 
@@ -38,12 +40,14 @@ function SidebarNav({
   isActive: (pathname: string, to: string, label: string) => boolean;
   onNavigate?: () => void;
 }) {
+  const t = useT();
+
   return (
     <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-2">
       {groups.map((group) => (
         <div key={group.label}>
           <div className="text-sidebar-foreground/40 mb-1.5 px-3 text-[10px] font-medium tracking-[0.18em] uppercase">
-            {group.label}
+            {t(group.label)}
           </div>
           <div className="space-y-0.5">
             {group.items.map((item) => {
@@ -62,7 +66,7 @@ function SidebarNav({
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1">{item.label}</span>
+                  <span className="flex-1">{t(item.label)}</span>
                   {(item.comingSoon || item.badge) && (
                     <span
                       className={cn(
@@ -74,7 +78,7 @@ function SidebarNav({
                             : 'bg-sidebar-accent text-sidebar-foreground',
                       )}
                     >
-                      {item.comingSoon ? 'Soon' : item.badge}
+                      {item.comingSoon ? t('Soon') : item.badge}
                     </span>
                   )}
                 </Link>
@@ -127,6 +131,7 @@ export function AppShell({
   const path = pathRaw !== '/' && pathRaw.endsWith('/') ? pathRaw.slice(0, -1) : pathRaw;
   const isActive = navActiveCheck ?? isWorkspaceNavItemActive;
   const [mobileOpen, setMobileOpen] = useState(false);
+  const t = useT();
   const breadcrumbSegments = breadcrumbsFromPath(path, title);
 
   const sidebarBrand = (
@@ -149,7 +154,7 @@ export function AppShell({
       <div>
         <div className="text-sm font-semibold tracking-tight">{brand}</div>
         <div className="text-sidebar-foreground/50 text-[10px] tracking-[0.18em] uppercase">
-          {accent}
+          {t(accent)}
         </div>
       </div>
     </BrandLogoLink>
@@ -177,7 +182,7 @@ export function AppShell({
           className="border-sidebar-border bg-sidebar text-sidebar-foreground w-72 p-0"
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Navigation</SheetTitle>
+            <SheetTitle>{t('Navigation')}</SheetTitle>
           </SheetHeader>
           {sidebarBrand}
           <SidebarNav
@@ -198,23 +203,25 @@ export function AppShell({
               size="icon"
               className="shrink-0 rounded-lg lg:hidden"
               type="button"
-              aria-label="Open navigation menu"
+              aria-label={t('Open navigation menu')}
               onClick={() => setMobileOpen(true)}
             >
               <Menu className="h-5 w-5" />
             </Button>
             <div className="min-w-0">
-              <div className="truncate text-base font-semibold tracking-tight">{title}</div>
-              {subtitle && <div className="text-muted-foreground truncate text-xs">{subtitle}</div>}
+              <div className="truncate text-base font-semibold tracking-tight">{t(title)}</div>
+              {subtitle && (
+                <div className="text-muted-foreground truncate text-xs">{t(subtitle)}</div>
+              )}
             </div>
           </div>
           <div className="relative order-3 col-span-3 hidden w-full max-w-[460px] md:block lg:order-none lg:col-span-1">
-            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+            <Search className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2" />
             <Input
-              placeholder="Search anything…"
-              className="border-border bg-muted/50 focus-visible:ring-primary/30 h-9 rounded-lg pr-14 pl-9"
+              placeholder={t('Search anything…')}
+              className="border-border bg-muted/50 focus-visible:ring-primary/30 h-9 rounded-lg ps-9 pe-14"
             />
-            <kbd className="border-border bg-background text-muted-foreground pointer-events-none absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px]">
+            <kbd className="border-border bg-background text-muted-foreground pointer-events-none absolute end-2.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px]">
               <Command className="h-2.5 w-2.5" />K
             </kbd>
           </div>
@@ -235,7 +242,8 @@ export function AppShell({
               </>
             )}
           </div>
-          <div className="border-border flex items-center gap-2.5 border-l pl-3">
+          <div className="border-border flex items-center gap-2.5 border-s ps-3">
+            <LanguageSwitch />
             {userMenu ?? (
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-[11px] font-semibold">

@@ -1,8 +1,11 @@
 import { Link } from '@tanstack/react-router';
 import { Card } from '@/components/ui/card';
+import { useT } from '@/lib/i18n/locale-context';
 import { WORKSPACE_QUICK_ACTIONS } from '@/lib/workspace/quick-actions';
 
 export function QuickActionGrid() {
+  const t = useT();
+
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {WORKSPACE_QUICK_ACTIONS.map((action) => (
@@ -22,8 +25,8 @@ export function QuickActionGrid() {
               />
             </div>
             <div className="min-w-0">
-              <p className="group-hover:text-primary font-medium">{action.label}</p>
-              <p className="text-muted-foreground text-xs">{action.description}</p>
+              <p className="group-hover:text-primary font-medium">{t(action.label)}</p>
+              <p className="text-muted-foreground text-xs">{t(action.description)}</p>
             </div>
           </Card>
         </Link>

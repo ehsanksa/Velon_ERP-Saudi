@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useT } from '@/lib/i18n/locale-context';
 import { cn } from '@/lib/utils';
 
 export type NotificationPreview = {
@@ -33,6 +34,7 @@ export function NotificationDropdown({
   onMarkAllRead?: () => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const containerRef = useRef<HTMLDivElement>(null);
   const showBadge = unreadCount > 0 || items.length > 0;
 
@@ -88,7 +90,7 @@ export function NotificationDropdown({
                 className="h-7 shrink-0 text-xs"
                 onClick={() => void onMarkAllRead()}
               >
-                Mark all read
+                {t('Mark all read')}
               </Button>
             ) : null}
           </div>
@@ -141,7 +143,7 @@ export function NotificationDropdown({
               className="w-full rounded-lg"
               onClick={() => setOpen(false)}
             >
-              <Link to={viewAllHref}>{viewAllLabel}</Link>
+              <Link to={viewAllHref}>{t(viewAllLabel)}</Link>
             </Button>
           </div>
         </div>

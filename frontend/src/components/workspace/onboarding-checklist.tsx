@@ -4,6 +4,7 @@ import { CheckCircle2, Circle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { useT } from '@/lib/i18n/locale-context';
 import { cn } from '@/lib/utils';
 import {
   buildOnboardingSteps,
@@ -19,6 +20,7 @@ export function OnboardingChecklist({ data }: { data: DashboardData }) {
   const steps = buildOnboardingSteps(data);
   const progress = onboardingProgress(steps);
   const [dismissed, setDismissed] = useState(isOnboardingDismissed);
+  const t = useT();
 
   if (dismissed || progress.done === progress.total) return null;
 
@@ -32,13 +34,13 @@ export function OnboardingChecklist({ data }: { data: DashboardData }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-primary text-[11px] font-medium tracking-wider uppercase">
-            Getting started
+            {t('Getting started')}
           </p>
           <h2 className="mt-1 text-lg font-semibold tracking-tight">
-            Set up Velon in a few easy steps
+            {t('Set up Velon in a few easy steps')}
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Complete these to start billing, selling, and tracking your business.
+            {t('Complete these to start billing, selling, and tracking your business.')}
           </p>
         </div>
         <Button
@@ -46,7 +48,7 @@ export function OnboardingChecklist({ data }: { data: DashboardData }) {
           size="icon"
           className="text-muted-foreground h-8 w-8 shrink-0"
           onClick={handleDismiss}
-          aria-label="Dismiss checklist"
+          aria-label={t('Dismiss checklist')}
         >
           <X className="h-4 w-4" />
         </Button>
@@ -76,6 +78,7 @@ export function OnboardingChecklist({ data }: { data: DashboardData }) {
 
 function OnboardingStepRow({ step }: { step: OnboardingStep }) {
   const Icon = step.icon;
+  const t = useT();
 
   if (step.done) {
     return (
@@ -84,7 +87,7 @@ function OnboardingStepRow({ step }: { step: OnboardingStep }) {
           className="h-4 w-4 shrink-0 text-emerald-600"
           aria-hidden
         />
-        <span className="text-muted-foreground line-through">{step.label}</span>
+        <span className="text-muted-foreground line-through">{t(step.label)}</span>
       </li>
     );
   }
@@ -108,8 +111,8 @@ function OnboardingStepRow({ step }: { step: OnboardingStep }) {
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <p className="font-medium">{step.label}</p>
-          <p className="text-muted-foreground text-xs">{step.description}</p>
+          <p className="font-medium">{t(step.label)}</p>
+          <p className="text-muted-foreground text-xs">{t(step.description)}</p>
         </div>
       </Link>
     </li>

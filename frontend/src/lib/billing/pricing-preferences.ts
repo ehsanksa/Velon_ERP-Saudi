@@ -1,4 +1,5 @@
 import { isSaudiBilling, type PlanRegionalPrices } from '@velon/shared';
+import { emitLocaleChange } from '@/lib/i18n/events';
 import {
   countryOptions,
   currencyLocale,
@@ -211,6 +212,7 @@ export function savePricingPreference(preference: PricingPreference) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(PRICING_PREFERENCE_KEY, JSON.stringify(preference));
   applyPricingLanguage(preference.language);
+  emitLocaleChange(preference.language);
 }
 
 const TIMEZONE_COUNTRY: Record<string, PricingCountry> = {
@@ -236,7 +238,6 @@ export function detectVisitorPricingPreference(): PricingPreference {
 
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
-  const primaryLang = languages[0]?.toLowerCase() ?? 'en';
 
   let country: PricingCountry = TIMEZONE_COUNTRY[timeZone] ?? 'OTHER';
   if (country === 'OTHER') {
@@ -262,20 +263,23 @@ export function detectVisitorPricingPreference(): PricingPreference {
   }
 
   const currency = getCountryDefaultCurrency(country);
-  const choices = languageChoicesForCountry(country);
-  let language: PricingLanguage = choices[0] ?? 'en';
-  if (primaryLang.startsWith('ar') && choices.includes('ar')) language = 'ar';
-  else if (primaryLang.startsWith('en') && choices.includes('en')) language = 'en';
-  else if (GCC_COUNTRIES.has(country) || country === 'EG') language = 'ar';
-
-  return { country, currency, language };
+  // Saudi edition: Arabic is the language on first visit. English is an explicit switch.
+  return { country, currency, language: 'ar' };
 }
 
 /** Soft-apply region detection when the visitor has no saved preference yet. */
 export function ensureDetectedPricingPreference(): PricingPreference {
   if (typeof window === 'undefined') return defaultPricingPreference;
   const raw = window.localStorage.getItem(PRICING_PREFERENCE_KEY);
-  if (raw) return readPricingPreference();
+  if (raw) {
+    const saved = readPricingPreference();
+    if (!hasConfirmedLanguage() && saved.language !== 'ar') {
+      const next = { ...saved, language: 'ar' as const };
+      savePricingPreference(next);
+      return next;
+    }
+    return saved;
+  }
   const detected = detectVisitorPricingPreference();
   savePricingPreference(detected);
   return detected;

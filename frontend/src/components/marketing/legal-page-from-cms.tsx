@@ -1,5 +1,6 @@
 import { LegalPageLayout } from '@/components/marketing/legal-page-layout';
 import type { CmsLegalPage } from '@/lib/cms/defaults';
+import { useT } from '@/lib/i18n/locale-context';
 
 export function LegalPageFromCms({
   page,
@@ -8,6 +9,8 @@ export function LegalPageFromCms({
   page: CmsLegalPage;
   relatedLinks: { label: string; to: string }[];
 }) {
+  const t = useT();
+
   return (
     <LegalPageLayout
       label="Legal"
@@ -20,7 +23,7 @@ export function LegalPageFromCms({
         title: section.title,
         content: section.body
           .split('\n\n')
-          .map((paragraph, index) => <p key={index}>{paragraph}</p>),
+          .map((paragraph, index) => <p key={index}>{t(paragraph)}</p>),
       }))}
       relatedLinks={relatedLinks}
     />

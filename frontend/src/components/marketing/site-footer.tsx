@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { VELON_CONTACT_EMAIL } from '@velon/shared';
 import { VelonLogo } from '@/components/marketing/velon-logo';
 import type { PublicSiteContent } from '@/lib/cms/load-public';
+import { useT } from '@/lib/i18n/locale-context';
 import { cn } from '@/lib/utils';
 
 type SiteFooterProps = {
@@ -12,6 +13,7 @@ type SiteFooterProps = {
 };
 
 export function SiteFooter({ footer, contact, appearance = 'canvas' }: SiteFooterProps = {}) {
+  const t = useT();
   const tagline = footer?.tagline ?? 'VelonERP';
   const showTagline = tagline.trim().toLowerCase() !== 'velonerp';
   const onNavy = appearance === 'navy';
@@ -50,25 +52,25 @@ export function SiteFooter({ footer, contact, appearance = 'canvas' }: SiteFoote
               to="/privacy"
               className={linkClass}
             >
-              Privacy Policy
+              {t('Privacy Policy')}
             </Link>
             <Link
               to="/terms"
               className={linkClass}
             >
-              Terms of Service
+              {t('Terms of Service')}
             </Link>
             <Link
               to="/refund-policy"
               className={linkClass}
             >
-              Refund Policy
+              {t('Refund Policy')}
             </Link>
             <Link
               to="/help"
               className={linkClass}
             >
-              Help
+              {t('Help')}
             </Link>
             {links.map((link) =>
               link.href.startsWith('/') ? (
@@ -77,7 +79,7 @@ export function SiteFooter({ footer, contact, appearance = 'canvas' }: SiteFoote
                   to={link.href}
                   className={linkClass}
                 >
-                  {link.label}
+                  {t(link.label)}
                 </Link>
               ) : (
                 <a
@@ -85,7 +87,7 @@ export function SiteFooter({ footer, contact, appearance = 'canvas' }: SiteFoote
                   href={link.href}
                   className={linkClass}
                 >
-                  {link.label}
+                  {t(link.label)}
                 </a>
               ),
             )}
@@ -94,12 +96,12 @@ export function SiteFooter({ footer, contact, appearance = 'canvas' }: SiteFoote
 
         <div
           className={cn(
-            'border-t pt-6 text-center sm:text-left',
+            'border-t pt-6 text-center sm:text-start',
             onNavy ? 'border-white/10' : 'border-border/60',
           )}
         >
           <p className={cn('text-sm', onNavy ? 'text-white/85' : 'text-foreground/90')}>
-            Velon ERP Powered by{' '}
+            {t('Velon ERP Powered by')}{' '}
             <a
               href="https://archerstechnologies.com"
               target="_blank"
@@ -128,8 +130,8 @@ export function SiteFooter({ footer, contact, appearance = 'canvas' }: SiteFoote
           </p>
         </div>
 
-        <p className="text-center text-[11px] sm:text-left">
-          © 2026 Archers Technologies. All rights reserved.
+        <p className="text-center text-[11px] sm:text-start">
+          {t('© 2026 Archers Technologies. All rights reserved.')}
         </p>
       </div>
     </footer>

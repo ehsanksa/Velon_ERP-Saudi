@@ -25,6 +25,7 @@ import {
   useAdminCurrency,
 } from '@/contexts/admin-currency';
 import { usePlatformRealtime } from '@/hooks/use-platform-realtime';
+import { useT } from '@/lib/i18n/locale-context';
 import { loadAlertsLogsCommandCenter } from '@/lib/platform/admin-loaders';
 import {
   applyVelonThemeFromStorage,
@@ -63,6 +64,7 @@ function AdminHeaderToolbar({
 }) {
   const { preset, customSymbol } = useAdminCurrency();
   const books = adminBooksCurrencyLine(preset, customSymbol);
+  const t = useT();
   const [dark, setDark] = useState(false);
 
   useLayoutEffect(() => {
@@ -80,7 +82,7 @@ function AdminHeaderToolbar({
       </span>
       <div className="hidden min-w-0 flex-col items-end text-right md:flex">
         <span className="text-muted-foreground text-[9px] font-medium tracking-wider uppercase">
-          Platform figures
+          {t('Platform figures')}
         </span>
         <span
           className="max-w-[220px] truncate text-[11px] leading-tight font-semibold"
@@ -95,7 +97,7 @@ function AdminHeaderToolbar({
       />
       <div
         className="text-muted-foreground hidden min-w-0 items-center gap-1.5 sm:flex"
-        title="Primary control plane"
+        title={t('Primary control plane')}
       >
         <MapPin
           className="h-3.5 w-3.5 shrink-0"
@@ -103,7 +105,7 @@ function AdminHeaderToolbar({
         />
         <div className="flex min-w-0 flex-col items-end text-right">
           <span className="text-foreground max-w-[min(42vw,200px)] truncate text-[11px] font-medium">
-            Global · multi-region
+            {t('Global · multi-region')}
           </span>
           <span className="text-muted-foreground max-w-[min(42vw,200px)] truncate text-[10px]">
             Primary · us-east-1
@@ -120,7 +122,7 @@ function AdminHeaderToolbar({
           toggleVelonTheme();
           setDark(isVelonDocumentDark());
         }}
-        aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-label={dark ? t('Switch to light mode') : t('Switch to dark mode')}
       >
         {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </Button>

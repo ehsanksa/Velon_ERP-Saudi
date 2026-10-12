@@ -5,8 +5,10 @@ import { BrandLogoLink } from '@/components/marketing/brand-logo-link';
 import { SiteFooter } from '@/components/marketing/site-footer';
 import { VelonLogo } from '@/components/marketing/velon-logo';
 import { VelonLogoMark } from '@/components/marketing/velon-logo-mark';
+import { LanguageSwitch } from '@/components/shared/language-switch';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { useT } from '@/lib/i18n/locale-context';
 import { cn } from '@/lib/utils';
 
 export type AuthPortalSignal = {
@@ -43,6 +45,7 @@ export function AuthPortalShell({
   children,
 }: AuthPortalShellProps) {
   const isPlatform = variant === 'platform';
+  const t = useT();
 
   return (
     <div
@@ -66,18 +69,21 @@ export function AuthPortalShell({
               alt=""
             />
           </BrandLogoLink>
-          {crossLink ? (
-            <Link
-              to={crossLink.to}
-              search={crossLink.search}
-              className={cn(
-                'text-sm font-medium underline-offset-4 hover:underline',
-                isPlatform ? 'text-[#b7f3df]' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {crossLink.label}
-            </Link>
-          ) : null}
+          <div className="flex items-center gap-3">
+            <LanguageSwitch tone={isPlatform ? 'inverse' : 'default'} />
+            {crossLink ? (
+              <Link
+                to={crossLink.to}
+                search={crossLink.search}
+                className={cn(
+                  'text-sm font-medium underline-offset-4 hover:underline',
+                  isPlatform ? 'text-[#b7f3df]' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t(crossLink.label)}
+              </Link>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -105,7 +111,7 @@ export function AuthPortalShell({
                   : 'border-border bg-background/80',
               )}
             >
-              {badge}
+              {t(badge)}
             </Badge>
 
             <div className="mt-8 flex items-center gap-3">
@@ -118,9 +124,9 @@ export function AuthPortalShell({
                 <div
                   className={cn('text-sm', isPlatform ? 'text-white/55' : 'text-muted-foreground')}
                 >
-                  {portalLabel}
+                  {t(portalLabel)}
                 </div>
-                <div className="text-xl font-semibold tracking-tight">{portalTitle}</div>
+                <div className="text-xl font-semibold tracking-tight">{t(portalTitle)}</div>
               </div>
             </div>
 
@@ -130,7 +136,7 @@ export function AuthPortalShell({
                 isPlatform && 'text-white',
               )}
             >
-              {headline}
+              {t(headline)}
             </h1>
             <p
               className={cn(
@@ -138,7 +144,7 @@ export function AuthPortalShell({
                 isPlatform ? 'text-white/60' : 'text-muted-foreground',
               )}
             >
-              {description}
+              {t(description)}
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -155,14 +161,14 @@ export function AuthPortalShell({
                   <item.icon
                     className={cn('h-5 w-5', isPlatform ? 'text-[#5ee0b5]' : 'text-primary')}
                   />
-                  <div className="mt-3 text-sm font-semibold">{item.title}</div>
+                  <div className="mt-3 text-sm font-semibold">{t(item.title)}</div>
                   <p
                     className={cn(
                       'mt-1 text-xs leading-relaxed',
                       isPlatform ? 'text-white/50' : 'text-muted-foreground',
                     )}
                   >
-                    {item.desc}
+                    {t(item.desc)}
                   </p>
                 </Card>
               ))}
@@ -184,7 +190,7 @@ export function AuthPortalShell({
                   )}
                 />
                 <div className="leading-relaxed [&_a]:underline [&_a]:underline-offset-2">
-                  {complianceText}
+                  {typeof complianceText === 'string' ? t(complianceText) : complianceText}
                 </div>
               </div>
             </Card>

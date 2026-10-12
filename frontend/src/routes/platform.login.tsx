@@ -11,6 +11,7 @@ import { isApiEnabled } from '@/lib/api/config';
 import { formatApiError, loginSearch } from '@/lib/auth/login-utils';
 import { redirectIfAdminAuthenticated } from '@/lib/auth/route-guard';
 import { saveSession } from '@/lib/auth/session';
+import { useT } from '@/lib/i18n/locale-context';
 
 export const Route = createFileRoute('/platform/login')({
   beforeLoad: () => {
@@ -49,6 +50,7 @@ const platformSignals = [
 function PlatformLoginPage() {
   const router = useRouter();
   const useApi = isApiEnabled();
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,12 +60,12 @@ function PlatformLoginPage() {
     setBusy(true);
     try {
       if (!useApi) {
-        toast.error('Configure VITE_API_URL — demo platform auth was removed in Phase 2C.');
+        toast.error(t('Configure VITE_API_URL — demo platform auth was removed in Phase 2C.'));
         return;
       }
       const res = await apiLogin(email, password);
       if (res.route !== 'admin') {
-        toast.error('This portal is for platform administrators only. Use workspace sign-in.');
+        toast.error(t('This portal is for platform administrators only. Use workspace sign-in.'));
         return;
       }
       saveSession({
@@ -73,11 +75,11 @@ function PlatformLoginPage() {
         email,
         scope: res.scope ?? 'platform',
       });
-      toast.success('Signed in to platform control plane');
+      toast.success(t('Signed in to platform control plane'));
       // Full navigation avoids a loader race while pathname is still /platform/login.
       window.location.assign('/admin');
     } catch (err) {
-      toast.error(formatApiError(err, 'Platform sign-in failed'));
+      toast.error(formatApiError(err, t('Platform sign-in failed')));
     } finally {
       setBusy(false);
     }
@@ -95,20 +97,21 @@ function PlatformLoginPage() {
       complianceIcon={LockKeyhole}
       complianceText={
         <>
-          Restricted to authorized Velon platform staff. Impersonation, tenant freeze, and billing
-          changes are logged with tamper-evident audit trails. See{' '}
+          {t(
+            'Restricted to authorized Velon platform staff. Impersonation, tenant freeze, and billing changes are logged with tamper-evident audit trails. See',
+          )}{' '}
           <Link
             to="/privacy"
             className="text-[#b7f3df]"
           >
-            Privacy Policy
+            {t('Privacy Policy')}
           </Link>{' '}
-          and{' '}
+          {t('and')}{' '}
           <Link
             to="/terms"
             className="text-[#b7f3df]"
           >
-            Terms
+            {t('Terms')}
           </Link>
           .
         </>
@@ -121,11 +124,12 @@ function PlatformLoginPage() {
       >
         <div className="space-y-1">
           <p className="text-xs font-medium tracking-wider text-white/45 uppercase">
-            Platform administrator
+            {t('Platform administrator')}
           </p>
           <p className="text-sm text-white/70">
-            Use the email provisioned for Super Admin access. MFA may be required after password
-            verification.
+            {t(
+              'Use the email provisioned for Super Admin access. MFA may be required after password verification.',
+            )}
           </p>
         </div>
         <Input
@@ -138,7 +142,7 @@ function PlatformLoginPage() {
           className="border-white/15 bg-white/5 text-white placeholder:text-white/35"
         />
         <Input
-          placeholder="Password"
+          placeholder={t('Password')}
           type="password"
           autoComplete="current-password"
           value={password}
@@ -151,14 +155,14 @@ function PlatformLoginPage() {
           disabled={busy}
           className="bg-gradient-primary shadow-glow w-full text-white hover:opacity-95"
         >
-          {busy ? 'Verifying…' : 'Enter control plane'}
+          {busy ? t('Verifying…') : t('Enter control plane')}
         </Button>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4 text-xs text-white/45">
           <span className="flex items-center gap-1.5">
             <Headphones className="h-3.5 w-3.5" /> {VELON_CONTACT_EMAIL}
           </span>
           <span className="flex items-center gap-1.5">
-            <Activity className="h-3.5 w-3.5" /> SOC2 audit trail active
+            <Activity className="h-3.5 w-3.5" /> {t('SOC2 audit trail active')}
           </span>
         </div>
       </form>

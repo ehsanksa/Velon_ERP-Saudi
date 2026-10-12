@@ -2,12 +2,14 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Building2, Factory, ShoppingBag, Stethoscope, Store, Truck } from 'lucide-react';
 import { MarketingPageShell } from '@/components/marketing/marketing-page-shell';
 import { Card } from '@/components/ui/card';
+import { useT } from '@/lib/i18n/locale-context';
 
 export const Route = createFileRoute('/industries')({
   component: IndustriesPage,
 });
 
 function IndustriesPage() {
+  const t = useT();
   const industries = [
     {
       icon: Store,
@@ -54,8 +56,8 @@ function IndustriesPage() {
             className="border-border bg-card p-6"
           >
             <item.icon className="h-5 w-5" />
-            <h3 className="mt-4 text-lg font-semibold">{item.name}</h3>
-            <p className="text-muted-foreground mt-2 text-sm">{item.detail}</p>
+            <h3 className="mt-4 text-lg font-semibold">{t(item.name)}</h3>
+            <p className="text-muted-foreground mt-2 text-sm">{t(item.detail)}</p>
           </Card>
         ))}
       </div>

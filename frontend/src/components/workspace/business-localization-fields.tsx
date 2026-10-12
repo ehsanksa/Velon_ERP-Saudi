@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect } from '@/components/ui/native-select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { useLocale, useT } from '@/lib/i18n/locale-context';
 import {
   countryOptions,
   currencyOptions,
@@ -59,10 +60,26 @@ export function BusinessLocalizationFields({
   showFormats = true,
   idPrefix = 'biz',
 }: Props) {
-  const countrySelectOptions = useMemo(
-    () => countryOptions.map((row) => ({ value: row.value, label: row.label })),
-    [],
-  );
+  const t = useT();
+  const { locale } = useLocale();
+  const countrySelectOptions = useMemo(() => {
+    let names: Intl.DisplayNames | null = null;
+    try {
+      names = new Intl.DisplayNames([locale === 'ar' ? 'ar' : 'en'], { type: 'region' });
+    } catch {
+      names = null;
+    }
+    return countryOptions.map((row): { value: string; label: string } => {
+      if (row.value === 'OTHER') return { value: row.value, label: t(row.label) };
+      let label = row.label;
+      try {
+        label = names?.of(row.value) || row.label;
+      } catch {
+        label = row.label;
+      }
+      return { value: row.value, label };
+    });
+  }, [locale, t]);
 
   const currencySelectOptions = useMemo(
     () =>
@@ -85,39 +102,39 @@ export function BusinessLocalizationFields({
   return (
     <div className="grid gap-4">
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-country`}>Country *</Label>
+        <Label htmlFor={`${idPrefix}-country`}>{t('Country *')}</Label>
         <SearchableSelect
           id={`${idPrefix}-country`}
           value={value.countryCode}
           onChange={applyCountry}
           options={countrySelectOptions}
-          placeholder="Select country"
-          searchPlaceholder="Search countries…"
-          emptyMessage="No country found."
+          placeholder={t('Select country')}
+          searchPlaceholder={t('Search countries…')}
+          emptyMessage={t('No country found.')}
           required
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-currency`}>Currency *</Label>
+        <Label htmlFor={`${idPrefix}-currency`}>{t('Currency *')}</Label>
         <NativeSelect
           id={`${idPrefix}-currency`}
           value={value.currency}
           onChange={(currency) => onChange({ ...value, currency })}
           options={currencySelectOptions}
-          placeholder="Select currency"
+          placeholder={t('Select currency')}
           required
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-timezone`}>Timezone *</Label>
+        <Label htmlFor={`${idPrefix}-timezone`}>{t('Timezone *')}</Label>
         <NativeSelect
           id={`${idPrefix}-timezone`}
           value={value.timezone}
           onChange={(timezone) => onChange({ ...value, timezone })}
           options={TIMEZONE_OPTIONS.map((row) => ({ value: row.value, label: row.label }))}
-          placeholder="Select timezone"
+          placeholder={t('Select timezone')}
           required
         />
       </div>
@@ -125,7 +142,7 @@ export function BusinessLocalizationFields({
       {showFormats ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-date-format`}>Date format</Label>
+            <Label htmlFor={`${idPrefix}-date-format`}>{t('Date format')}</Label>
             <NativeSelect
               id={`${idPrefix}-date-format`}
               value={value.dateFormat}
@@ -134,7 +151,7 @@ export function BusinessLocalizationFields({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-number-format`}>Number format</Label>
+            <Label htmlFor={`${idPrefix}-number-format`}>{t('Number format')}</Label>
             <NativeSelect
               id={`${idPrefix}-number-format`}
               value={value.numberFormat}
@@ -147,12 +164,12 @@ export function BusinessLocalizationFields({
 
       {showAddress ? (
         <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-address`}>Business address *</Label>
+          <Label htmlFor={`${idPrefix}-address`}>{t('Business address *')}</Label>
           <Input
             id={`${idPrefix}-address`}
             value={value.address ?? ''}
             onChange={(e) => onChange({ ...value, address: e.target.value })}
-            placeholder="Street, city, postal code"
+            placeholder={t('Street, city, postal code')}
             required
           />
         </div>
@@ -160,12 +177,12 @@ export function BusinessLocalizationFields({
 
       {showTaxId ? (
         <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-tax-id`}>Tax / VAT registration number</Label>
+          <Label htmlFor={`${idPrefix}-tax-id`}>{t('Tax / VAT registration number')}</Label>
           <Input
             id={`${idPrefix}-tax-id`}
             value={value.taxId ?? ''}
             onChange={(e) => onChange({ ...value, taxId: e.target.value })}
-            placeholder="Optional"
+            placeholder={t('Optional')}
           />
         </div>
       ) : null}

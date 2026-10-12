@@ -14,6 +14,7 @@ import {
   type PricingPreference,
 } from '@/lib/billing/pricing-preferences';
 import type { MarketingPlanCard } from '@/lib/billing/public-api';
+import { useT } from '@/lib/i18n/locale-context';
 
 type MarketingPricingSectionProps = {
   headline: string;
@@ -32,6 +33,8 @@ function BillingIntervalToggle({
   onChange: (interval: MarketingBillingInterval) => void;
   showAnnualSavings: boolean;
 }) {
+  const t = useT();
+
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
       <div className="border-border bg-background inline-flex rounded-full border p-1">
@@ -42,7 +45,7 @@ function BillingIntervalToggle({
           }`}
           onClick={() => onChange('MONTHLY')}
         >
-          Monthly
+          {t('Monthly')}
         </button>
         <button
           type="button"
@@ -51,7 +54,7 @@ function BillingIntervalToggle({
           }`}
           onClick={() => onChange('YEARLY')}
         >
-          Annual
+          {t('Annual')}
         </button>
       </div>
       {showAnnualSavings && interval === 'YEARLY' ? (
@@ -59,7 +62,7 @@ function BillingIntervalToggle({
           variant="secondary"
           className="rounded-full bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
         >
-          Save 16%
+          {t('Save 16%')}
         </Badge>
       ) : null}
     </div>
@@ -74,6 +77,7 @@ export function MarketingPricingSection({
   hideHeadline = false,
 }: MarketingPricingSectionProps) {
   const [interval, setInterval] = useState<MarketingBillingInterval>('MONTHLY');
+  const t = useT();
   const saudiPricing = isSaudiBilling(preference.country, preference.currency);
 
   return (
@@ -81,8 +85,8 @@ export function MarketingPricingSection({
       <div className="mb-10 text-center">
         {!hideHeadline ? (
           <div className="mx-auto max-w-2xl">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{headline}</h2>
-            <p className="text-muted-foreground mt-3 text-base leading-relaxed">{subhead}</p>
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{t(headline)}</h2>
+            <p className="text-muted-foreground mt-3 text-base leading-relaxed">{t(subhead)}</p>
           </div>
         ) : null}
 
@@ -100,8 +104,8 @@ export function MarketingPricingSection({
 
         {saudiPricing ? (
           <p className="text-muted-foreground mx-auto mt-5 max-w-2xl text-sm">
-            <span className="text-foreground font-medium">Founding offer:</span> 50% off year one
-            for the first 1,000 customers. Renews at standard annual rates.
+            <span className="text-foreground font-medium">{t('Founding offer:')}</span>
+            {t(' 50% off year one for the first 1,000 customers. Renews at standard annual rates.')}
           </p>
         ) : null}
       </div>
@@ -118,14 +122,14 @@ export function MarketingPricingSection({
           >
             {plan.featured ? (
               <Badge className="bg-background text-foreground hover:bg-background absolute -top-3 left-1/2 -translate-x-1/2">
-                Most popular
+                {t('Most popular')}
               </Badge>
             ) : null}
 
             <p
               className={`text-sm font-semibold ${plan.featured ? 'text-background' : 'text-foreground'}`}
             >
-              {plan.name}
+              {t(plan.name)}
             </p>
 
             <div className="mt-4 flex items-baseline gap-1">
@@ -135,7 +139,7 @@ export function MarketingPricingSection({
               <span
                 className={`text-sm ${plan.featured ? 'text-background/60' : 'text-muted-foreground'}`}
               >
-                {interval === 'YEARLY' ? '/yr' : '/mo'}
+                {interval === 'YEARLY' ? t('/yr') : t('/mo')}
               </span>
             </div>
 
@@ -144,7 +148,8 @@ export function MarketingPricingSection({
                 <p
                   className={`text-xs ${plan.featured ? 'text-background/65' : 'text-muted-foreground'}`}
                 >
-                  {formatPlanEffectiveMonthly(plan, preference)}/mo billed annually
+                  {formatPlanEffectiveMonthly(plan, preference)}
+                  {t('/mo billed annually')}
                 </p>
               ) : null}
             </div>
@@ -158,7 +163,7 @@ export function MarketingPricingSection({
                   <Check
                     className={`mt-0.5 h-4 w-4 shrink-0 ${plan.featured ? 'text-background' : 'text-foreground'}`}
                   />
-                  <span>{feature}</span>
+                  <span>{t(feature)}</span>
                 </li>
               ))}
             </ul>
@@ -178,7 +183,7 @@ export function MarketingPricingSection({
                   plan: parseSignupPlan(plan.id) ?? 'STARTER',
                 })}
               >
-                Start free trial
+                {t('Start free trial')}
               </Link>
             </Button>
           </Card>
@@ -188,14 +193,16 @@ export function MarketingPricingSection({
       <p className="text-muted-foreground mt-8 text-center text-xs leading-relaxed">
         {saudiPricing ? (
           <>
-            Prices are listed in Saudi Riyal. VAT is added only when the selling entity is registered for Saudi VAT.{' '}
+            {t(
+              'Prices are listed in Saudi Riyal. VAT is added only when the selling entity is registered for Saudi VAT.',
+            )}{' '}
             <Link
               to="/contact"
               className="text-foreground underline underline-offset-2"
             >
-              Contact sales
+              {t('Contact sales')}
             </Link>{' '}
-            for unlimited users or custom integrations.
+            {t('for unlimited users or custom integrations.')}
           </>
         ) : (
           <>
@@ -203,9 +210,9 @@ export function MarketingPricingSection({
               to="/contact"
               className="text-foreground underline underline-offset-2"
             >
-              Contact sales
+              {t('Contact sales')}
             </Link>{' '}
-            for enterprise plans and custom integrations.
+            {t('for enterprise plans and custom integrations.')}
           </>
         )}
       </p>

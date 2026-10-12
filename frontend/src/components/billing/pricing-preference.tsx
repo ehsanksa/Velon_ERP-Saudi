@@ -30,6 +30,8 @@ import {
   type PricingLanguage,
   type PricingPreference,
 } from '@/lib/billing/pricing-preferences';
+import { LOCALE_CHANGE_EVENT, type AppLocale } from '@/lib/i18n/events';
+import { useT } from '@/lib/i18n/locale-context';
 
 type PricingPreferenceContextValue = {
   preference: PricingPreference;
@@ -54,8 +56,18 @@ export function PricingPreferenceProvider({ children }: { children: ReactNode })
       }
     }
 
+    function onLocale(event: Event) {
+      const language = (event as CustomEvent<AppLocale>).detail;
+      if (language !== 'ar' && language !== 'en') return;
+      setPreference((prev) => (prev.language === language ? prev : { ...prev, language }));
+    }
+
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener(LOCALE_CHANGE_EVENT, onLocale);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(LOCALE_CHANGE_EVENT, onLocale);
+    };
   }, []);
 
   const updatePreference = useCallback((next: PricingPreference) => {
@@ -182,10 +194,16 @@ export function PricingPreferenceControl({
   compact?: boolean;
 }) {
   const countryLabel = useMemo(() => getCountryLabel(preference.country), [preference.country]);
+  const t = useT();
 
   return (
     <p className="text-muted-foreground relative z-10 text-center text-xs">
-      Showing {preference.currency} pricing{compact ? '' : ` for ${countryLabel}`}
+      {compact
+        ? t('Showing {currency} pricing', { currency: preference.currency })
+        : t('Showing {currency} pricing for {country}', {
+            currency: preference.currency,
+            country: countryLabel,
+          })}
     </p>
   );
 }

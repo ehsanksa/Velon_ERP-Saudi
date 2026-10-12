@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card';
 import { loginSearch } from '@/lib/auth/login-utils';
 import { loadPublicPlans, marketingPlanCards } from '@/lib/billing/public-api';
 import { loadPublicSiteContentSafe } from '@/lib/cms/load-public';
+import { useT } from '@/lib/i18n/locale-context';
 
 export const Route = createFileRoute('/')({
   loader: async () => {
@@ -54,6 +55,7 @@ function HomeContent() {
   const faqItems = siteContent.faq.items;
   const cta = siteContent.cta;
   const { preference } = usePricingPreference();
+  const t = useT();
 
   return (
     <div className="bg-background min-h-screen">
@@ -69,13 +71,13 @@ function HomeContent() {
             className="border-border bg-background/70 mb-6 gap-2 rounded-full px-4 py-1.5 text-xs font-medium backdrop-blur"
           >
             <span className="bg-primary-glow flex h-1.5 w-1.5 rounded-full" />
-            {hero.badge ?? 'Velon-ERP'}
+            {t(hero.badge ?? 'Velon-ERP')}
           </Badge>
           <h1 className="mx-auto max-w-4xl text-5xl leading-[1.05] font-semibold tracking-tight sm:text-6xl md:text-[72px]">
-            {hero.title}
+            {t(hero.title)}
           </h1>
           <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
-            {hero.subtitle}
+            {t(hero.subtitle)}
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Button
@@ -87,7 +89,7 @@ function HomeContent() {
                 to="/login"
                 search={loginSearch({ tab: 'signup' })}
               >
-                {hero.cta} <ArrowRight className="ml-2 h-4 w-4" />
+                {t(hero.cta)} <ArrowRight className="ms-2 h-4 w-4 rtl:-scale-x-100" />
               </Link>
             </Button>
             <Button
@@ -96,7 +98,7 @@ function HomeContent() {
               variant="outline"
               className="border-border h-12 rounded-xl px-7"
             >
-              <Link to="/pricing">{hero.ctaSecondary}</Link>
+              <Link to="/pricing">{t(hero.ctaSecondary)}</Link>
             </Button>
           </div>
         </div>
@@ -111,10 +113,10 @@ function HomeContent() {
             variant="outline"
             className="border-border mb-3 rounded-full"
           >
-            Platform
+            {t('Platform')}
           </Badge>
-          <h2 className="text-4xl font-semibold tracking-tight">{features.headline}</h2>
-          <p className="text-muted-foreground mt-3">{features.subhead}</p>
+          <h2 className="text-4xl font-semibold tracking-tight">{t(features.headline)}</h2>
+          <p className="text-muted-foreground mt-3">{t(features.subhead)}</p>
         </div>
         <div className="border-border bg-border grid gap-px overflow-hidden rounded-2xl border md:grid-cols-2 lg:grid-cols-3">
           {featureItems.map((item) => (
@@ -125,9 +127,9 @@ function HomeContent() {
               <div className="bg-gradient-primary mb-5 flex h-11 w-11 items-center justify-center rounded-xl text-white">
                 <Boxes className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-semibold tracking-tight">{item.title}</h3>
+              <h3 className="text-lg font-semibold tracking-tight">{t(item.title)}</h3>
               <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
-                {item.description}
+                {t(item.description)}
               </p>
             </div>
           ))}
@@ -137,19 +139,21 @@ function HomeContent() {
       {testimonials.length > 0 && (
         <section className="border-border bg-muted/30 border-y py-24">
           <div className="mx-auto max-w-7xl px-6">
-            <h2 className="text-3xl font-semibold tracking-tight">Trusted by growing teams</h2>
+            <h2 className="text-3xl font-semibold tracking-tight">
+              {t('Trusted by growing teams')}
+            </h2>
             <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {testimonials.map((t) => (
+              {testimonials.map((item) => (
                 <Card
-                  key={`${t.author}-${t.company}`}
+                  key={`${item.author}-${item.company}`}
                   className="border-border bg-card p-6"
                 >
                   <p className="text-muted-foreground text-sm leading-relaxed">
-                    &ldquo;{t.quote}&rdquo;
+                    &ldquo;{t(item.quote)}&rdquo;
                   </p>
                   <p className="mt-4 text-sm font-medium">
-                    {t.author}
-                    <span className="text-muted-foreground"> · {t.company}</span>
+                    {t(item.author)}
+                    <span className="text-muted-foreground"> · {t(item.company)}</span>
                   </p>
                 </Card>
               ))}
@@ -167,7 +171,7 @@ function HomeContent() {
             variant="outline"
             className="border-border bg-background mx-auto mb-6 flex w-fit rounded-full"
           >
-            Pricing
+            {t('Pricing')}
           </Badge>
           <MarketingPricingSection
             headline={pricingContent.headline}
@@ -183,15 +187,17 @@ function HomeContent() {
           id="faq"
           className="mx-auto max-w-7xl px-6 py-24"
         >
-          <h2 className="text-3xl font-semibold tracking-tight">Frequently asked questions</h2>
+          <h2 className="text-3xl font-semibold tracking-tight">
+            {t('Frequently asked questions')}
+          </h2>
           <div className="mt-10 grid gap-4 md:grid-cols-2">
             {faqItems.map((item) => (
               <Card
                 key={item.q}
                 className="border-border bg-card p-6"
               >
-                <h3 className="font-semibold">{item.q}</h3>
-                <p className="text-muted-foreground mt-2 text-sm">{item.a}</p>
+                <h3 className="font-semibold">{t(item.q)}</h3>
+                <p className="text-muted-foreground mt-2 text-sm">{t(item.a)}</p>
               </Card>
             ))}
           </div>
@@ -203,8 +209,8 @@ function HomeContent() {
           <div className="bg-gradient-mesh absolute inset-0 opacity-20" />
           <div className="relative">
             <Zap className="mx-auto mb-4 h-9 w-9" />
-            <h3 className="text-3xl font-semibold tracking-tight">{cta.title}</h3>
-            <p className="mx-auto mt-3 max-w-xl text-white/75">{cta.subtitle}</p>
+            <h3 className="text-3xl font-semibold tracking-tight">{t(cta.title)}</h3>
+            <p className="mx-auto mt-3 max-w-xl text-white/75">{t(cta.subtitle)}</p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Button
                 size="lg"
@@ -216,10 +222,10 @@ function HomeContent() {
                     to="/login"
                     search={loginSearch({ tab: 'signup' })}
                   >
-                    {cta.primaryLabel}
+                    {t(cta.primaryLabel)}
                   </Link>
                 ) : (
-                  <Link to={cta.primaryHref}>{cta.primaryLabel}</Link>
+                  <Link to={cta.primaryHref}>{t(cta.primaryLabel)}</Link>
                 )}
               </Button>
               <Button
@@ -228,7 +234,7 @@ function HomeContent() {
                 className="h-12 rounded-xl px-7 text-white hover:bg-white/10"
                 asChild
               >
-                <Link to={cta.secondaryHref}>{cta.secondaryLabel}</Link>
+                <Link to={cta.secondaryHref}>{t(cta.secondaryLabel)}</Link>
               </Button>
             </div>
           </div>

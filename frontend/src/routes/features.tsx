@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { loginSearch } from '@/lib/auth/login-utils';
 import { loadPublicSiteContentSafe } from '@/lib/cms/load-public';
+import { useT } from '@/lib/i18n/locale-context';
 
 export const Route = createFileRoute('/features')({
   loader: () => loadPublicSiteContentSafe(),
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/features')({
 function FeaturesPage() {
   const siteContent = Route.useLoaderData();
   const items = siteContent.features.items;
+  const t = useT();
 
   return (
     <MarketingPageShell
@@ -29,8 +31,8 @@ function FeaturesPage() {
             key={item.title}
             className="border-border bg-card p-6"
           >
-            <h3 className="text-lg font-semibold">{item.title}</h3>
-            <p className="text-muted-foreground mt-2 text-sm">{item.description}</p>
+            <h3 className="text-lg font-semibold">{t(item.title)}</h3>
+            <p className="text-muted-foreground mt-2 text-sm">{t(item.description)}</p>
           </Card>
         ))}
       </div>
@@ -40,10 +42,10 @@ function FeaturesPage() {
             variant="outline"
             className="border-border bg-background"
           >
-            Workspace ready
+            {t('Workspace ready')}
           </Badge>
           <p className="text-muted-foreground mt-2 text-sm">
-            Sign up, invite your team, and manage your company from day one.
+            {t('Sign up, invite your team, and manage your company from day one.')}
           </p>
         </div>
         <Button
@@ -54,7 +56,7 @@ function FeaturesPage() {
             to="/login"
             search={loginSearch({ tab: 'signup' })}
           >
-            Start free trial <ArrowRight className="ml-1.5 h-4 w-4" />
+            {t('Start free trial')} <ArrowRight className="ms-1.5 h-4 w-4 rtl:-scale-x-100" />
           </Link>
         </Button>
       </Card>

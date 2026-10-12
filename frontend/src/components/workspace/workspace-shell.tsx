@@ -22,6 +22,7 @@ import {
   WorkspaceUserProfileProvider,
 } from '@/contexts/workspace-user-profile';
 import { usePlatformRealtime } from '@/hooks/use-platform-realtime';
+import { useT } from '@/lib/i18n/locale-context';
 import { normalizeExternalUrl, type LogoNav } from '@/lib/shared/logo-navigation';
 import {
   loadWorkspaceAlerts,
@@ -44,6 +45,7 @@ function WorkspaceHeaderToolbar({
   const { preset, customSymbol } = useWorkspaceCurrency();
   const { theme, toggleTheme, city, country, region } = useWorkspacePreferences();
   const books = workspaceBooksCurrencyLine(preset, customSymbol);
+  const t = useT();
   const locationPrimary = `${city}, ${country}`;
   const locationTitle = `${locationPrimary} · ${region}`;
 
@@ -57,7 +59,7 @@ function WorkspaceHeaderToolbar({
       </span>
       <div className="hidden min-w-0 flex-col items-end text-right 2xl:flex">
         <span className="text-muted-foreground text-[9px] font-medium tracking-wider uppercase">
-          Books in
+          {t('Books in')}
         </span>
         <span
           className="max-w-[220px] truncate text-[11px] leading-tight font-semibold"
@@ -93,7 +95,7 @@ function WorkspaceHeaderToolbar({
         className="shrink-0 rounded-lg"
         type="button"
         onClick={toggleTheme}
-        aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-label={theme === 'dark' ? t('Switch to light mode') : t('Switch to dark mode')}
       >
         {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </Button>

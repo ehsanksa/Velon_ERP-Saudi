@@ -7,6 +7,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { useT } from '@/lib/i18n/locale-context';
 
 export type BreadcrumbSegment = {
   label: string;
@@ -15,6 +16,7 @@ export type BreadcrumbSegment = {
 };
 
 export function PageBreadcrumbs({ segments }: { segments: BreadcrumbSegment[] }) {
+  const t = useT();
   if (segments.length === 0) return null;
 
   return (
@@ -29,14 +31,14 @@ export function PageBreadcrumbs({ segments }: { segments: BreadcrumbSegment[] })
             >
               <BreadcrumbItem>
                 {isLast || !segment.to ? (
-                  <BreadcrumbPage>{segment.label}</BreadcrumbPage>
+                  <BreadcrumbPage>{t(segment.label)}</BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
                     <Link
                       to={segment.to}
                       search={segment.search}
                     >
-                      {segment.label}
+                      {t(segment.label)}
                     </Link>
                   </BreadcrumbLink>
                 )}

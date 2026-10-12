@@ -1,9 +1,11 @@
 import { Check } from 'lucide-react';
 import { evaluatePasswordRules, PASSWORD_RULES } from '@/lib/auth/password-policy';
+import { useT } from '@/lib/i18n/locale-context';
 import { cn } from '@/lib/utils';
 
 export function PasswordRequirementsChecklist({ password }: { password: string }) {
   const rules = evaluatePasswordRules(password);
+  const t = useT();
 
   return (
     <ul
@@ -27,7 +29,7 @@ export function PasswordRequirementsChecklist({ password }: { password: string }
               )}
               aria-hidden
             />
-            <span>{rule.label}</span>
+            <span>{t(rule.label)}</span>
           </li>
         );
       })}

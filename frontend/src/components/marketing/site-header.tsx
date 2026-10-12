@@ -3,9 +3,11 @@ import { Link } from '@tanstack/react-router';
 import { Menu } from 'lucide-react';
 import { BrandLogoLink } from '@/components/marketing/brand-logo-link';
 import { VelonLogo } from '@/components/marketing/velon-logo';
+import { LanguageSwitch } from '@/components/shared/language-switch';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { loginSearch } from '@/lib/auth/login-utils';
+import { useT } from '@/lib/i18n/locale-context';
 
 const NAV_LINKS = [
   { to: '/features', label: 'Features' },
@@ -18,6 +20,7 @@ const NAV_LINKS = [
 
 export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const t = useT();
 
   return (
     <header className="border-border/60 bg-background/80 sticky top-0 z-50 border-b backdrop-blur-xl">
@@ -37,12 +40,13 @@ export function SiteHeader() {
               to={link.to}
               className="hover:text-foreground"
             >
-              {link.label}
+              {t(link.label)}
             </Link>
           ))}
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
+          <LanguageSwitch />
           <Button
             size="sm"
             variant="outline"
@@ -53,7 +57,7 @@ export function SiteHeader() {
               to="/login"
               search={loginSearch({ tab: 'signin' })}
             >
-              Login
+              {t('Login')}
             </Link>
           </Button>
 
@@ -62,7 +66,7 @@ export function SiteHeader() {
             className="bg-gradient-primary shadow-glow hidden text-white hover:opacity-95 md:inline-flex"
             asChild
           >
-            <Link to="/contact">Contact sales</Link>
+            <Link to="/contact">{t('Contact sales')}</Link>
           </Button>
 
           <Button
@@ -70,7 +74,7 @@ export function SiteHeader() {
             size="icon"
             className="shrink-0 md:hidden"
             type="button"
-            aria-label="Open navigation menu"
+            aria-label={t('Open navigation menu')}
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="h-5 w-5" />
@@ -87,9 +91,12 @@ export function SiteHeader() {
           className="w-[min(100vw-2rem,20rem)]"
         >
           <SheetHeader>
-            <SheetTitle>Menu</SheetTitle>
+            <SheetTitle>{t('Menu')}</SheetTitle>
           </SheetHeader>
-          <nav className="mt-6 flex flex-col gap-1">
+          <div className="mt-6">
+            <LanguageSwitch />
+          </div>
+          <nav className="mt-4 flex flex-col gap-1">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.to}
@@ -97,7 +104,7 @@ export function SiteHeader() {
                 className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg px-3 py-2.5 text-sm font-medium"
                 onClick={() => setMobileOpen(false)}
               >
-                {link.label}
+                {t(link.label)}
               </Link>
             ))}
             <div className="border-border mt-4 border-t pt-4">
@@ -109,7 +116,7 @@ export function SiteHeader() {
                   to="/contact"
                   onClick={() => setMobileOpen(false)}
                 >
-                  Contact sales
+                  {t('Contact sales')}
                 </Link>
               </Button>
             </div>

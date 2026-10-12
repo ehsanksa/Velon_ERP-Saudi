@@ -1,8 +1,10 @@
 import { createRouter, useRouter } from '@tanstack/react-router';
+import { useT } from '@/lib/i18n/locale-context';
 import { routeTree } from './routeTree.gen';
 
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
+  const t = useT();
 
   return (
     <div className="bg-background flex min-h-screen items-center justify-center px-4">
@@ -23,9 +25,11 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
             />
           </svg>
         </div>
-        <h1 className="text-foreground text-2xl font-bold tracking-tight">Something went wrong</h1>
+        <h1 className="text-foreground text-2xl font-bold tracking-tight">
+          {t('Something went wrong')}
+        </h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          An unexpected error occurred. Please try again.
+          {t('An unexpected error occurred. Please try again.')}
         </p>
         {import.meta.env.DEV && error.message && (
           <pre className="bg-muted text-destructive mt-4 max-h-40 overflow-auto rounded-md p-3 text-left font-mono text-xs">
@@ -40,13 +44,13 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
             }}
             className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors"
           >
-            Try again
+            {t('Try again')}
           </button>
           <a
             href="/"
             className="border-input bg-background text-foreground hover:bg-accent inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors"
           >
-            Go home
+            {t('Go home')}
           </a>
         </div>
       </div>

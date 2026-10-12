@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { submitContactInquiry } from '@/erp/erp-functions';
 import { loadPublicSiteContentSafe } from '@/lib/cms/load-public';
+import { useT } from '@/lib/i18n/locale-context';
 
 export const Route = createFileRoute('/contact')({
   loader: () => loadPublicSiteContentSafe(),
@@ -25,6 +26,7 @@ function ContactPage() {
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
+  const t = useT();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,14 +41,14 @@ function ContactPage() {
           message: message.trim(),
         },
       });
-      toast.success('Thanks — your inquiry was received.');
+      toast.success(t('Thanks — your inquiry was received.'));
       setFullName('');
       setEmail('');
       setCompany('');
       setPhone('');
       setMessage('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Something went wrong');
+      toast.error(err instanceof Error ? err.message : t('Something went wrong'));
     } finally {
       setBusy(false);
     }
@@ -61,10 +63,10 @@ function ContactPage() {
     >
       <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-3">
         <Card className="border-border bg-card p-6 md:col-span-1">
-          <h3 className="font-semibold">Contact details</h3>
+          <h3 className="font-semibold">{t('Contact details')}</h3>
           <dl className="mt-4 space-y-3 text-sm">
             <div>
-              <dt className="text-muted-foreground">Email</dt>
+              <dt className="text-muted-foreground">{t('Email')}</dt>
               <dd>
                 <a
                   href={`mailto:${contact.email}`}
@@ -75,12 +77,12 @@ function ContactPage() {
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Phone</dt>
+              <dt className="text-muted-foreground">{t('Phone')}</dt>
               <dd>{contact.phone}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Address</dt>
-              <dd>{contact.address}</dd>
+              <dt className="text-muted-foreground">{t('Address')}</dt>
+              <dd>{t(contact.address)}</dd>
             </div>
           </dl>
         </Card>
@@ -88,25 +90,25 @@ function ContactPage() {
           <form onSubmit={onSubmit}>
             <div className="grid gap-4 md:grid-cols-2">
               <Input
-                placeholder="Full name"
+                placeholder={t('Full name')}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
               />
               <Input
-                placeholder="Work email"
+                placeholder={t('Work email')}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
               <Input
-                placeholder="Company name"
+                placeholder={t('Company name')}
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
               />
               <Input
-                placeholder="Phone number"
+                placeholder={t('Phone number')}
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -115,7 +117,7 @@ function ContactPage() {
             <Textarea
               className="mt-4"
               rows={5}
-              placeholder="Tell us what you want to solve..."
+              placeholder={t('Tell us what you want to solve...')}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               required
@@ -125,7 +127,7 @@ function ContactPage() {
               disabled={busy}
               className="bg-foreground text-background hover:bg-foreground/90 mt-4"
             >
-              {busy ? 'Sending…' : 'Send inquiry'}
+              {busy ? t('Sending…') : t('Send inquiry')}
             </Button>
           </form>
         </Card>
