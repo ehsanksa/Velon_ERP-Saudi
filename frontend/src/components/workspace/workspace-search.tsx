@@ -9,54 +9,107 @@ import {
 import { useNavigate } from '@tanstack/react-router';
 import {
   Command,
+  File,
   FileText,
   Loader2,
   Package,
   Search,
   Truck,
-  UserCircle,
+  UserRound,
   Users,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { workspaceAdminSearch } from '@velon/shared';
 import { Input } from '@/components/ui/input';
+import { useWorkspaceCurrency } from '@/contexts/workspace-currency';
+import { loadCompanyAssetBlob } from '@/lib/crm/company-assets-api';
+import { downloadQuotationPdf } from '@/lib/crm/quotation-api';
 import { useT } from '@/lib/i18n/locale-context';
+import { downloadInvoicePdf } from '@/lib/sales/invoice-api';
 import { cn } from '@/lib/utils';
 import {
-  flattenWorkspaceSearch,
+  orderWorkspaceSearch,
   searchWorkspace,
   type WorkspaceSearchHit,
   type WorkspaceSearchKind,
   type WorkspaceSearchResult,
 } from '@/lib/workspace/search';
+import { presentBlob } from '@/lib/workspace/search-actions';
 
 const EMPTY_RESULT: WorkspaceSearchResult = {
   failed: false,
   products: [],
-  customers: [],
   invoices: [],
+  documents: [],
+  users: [],
+  customers: [],
   suppliers: [],
   employees: [],
 };
 
 const GROUP_LABEL: Record<WorkspaceSearchKind, string> = {
   product: 'Products',
-  customer: 'Customers',
   invoice: 'Invoices',
+  document: 'Documents',
+  user: 'Users',
+  customer: 'Customers',
   supplier: 'Suppliers',
   employee: 'Employees',
+};
+
+const INVOICE_STATUS: Record<string, string> = {
+  DRAFT: 'Draft',
+  UNPAID: 'Unpaid',
+  PARTIALLY_PAID: 'Partially paid',
+  PAID: 'Paid',
+  OVERDUE: 'Overdue',
+  CANCELLED: 'Cancelled',
+  VOID: 'Void',
 };
 
 function GroupIcon({ kind }: { kind: WorkspaceSearchKind }) {
   const className = 'text-muted-foreground h-4 w-4 shrink-0';
   if (kind === 'product') return <Package className={className} />;
-  if (kind === 'customer') return <Users className={className} />;
   if (kind === 'invoice') return <FileText className={className} />;
+  if (kind === 'document') return <File className={className} />;
+  if (kind === 'user') return <UserRound className={className} />;
+  if (kind === 'customer') return <Users className={className} />;
   if (kind === 'supplier') return <Truck className={className} />;
-  return <UserCircle className={className} />;
+  return <UserRound className={className} />;
+}
+
+function ActionButton({
+  label,
+  hint,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  hint: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={hint}
+      disabled={disabled}
+      className="text-primary hover:bg-primary/10 rounded px-1.5 py-0.5 text-[11px] font-medium disabled:opacity-50"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+    >
+      {label}
+    </button>
+  );
 }
 
 export function WorkspaceSearch() {
   const t = useT();
   const navigate = useNavigate();
+  const { formatCurrency } = useWorkspaceCurrency();
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,10 +118,12 @@ export function WorkspaceSearch() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<WorkspaceSearchResult>(EMPTY_RESULT);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const requestRef = useRef(0);
 
-  const hits = useMemo(() => flattenWorkspaceSearch(result), [result]);
   const term = query.trim();
+  const groups = useMemo(() => orderWorkspaceSearch(term, result), [term, result]);
+  const hits = useMemo(() => groups.flatMap((group) => group.items), [groups]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -115,9 +170,17 @@ export function WorkspaceSearch() {
     return () => window.clearTimeout(timer);
   }, [term]);
 
-  function openHit(hit: WorkspaceSearchHit) {
+  function close() {
     setOpen(false);
     setQuery('');
+  }
+
+  function openHit(hit: WorkspaceSearchHit) {
+    if (hit.kind === 'document') {
+      void runAction(hit, 'view');
+      return;
+    }
+    close();
     if (hit.kind === 'product') {
       void navigate({
         to: '/app/inventory/products',
@@ -133,6 +196,10 @@ export function WorkspaceSearch() {
       void navigate({ to: '/app/invoices/$invoiceId', params: { invoiceId: hit.id } });
       return;
     }
+    if (hit.kind === 'user') {
+      void navigate({ to: '/app/settings/admin', search: workspaceAdminSearch('users') });
+      return;
+    }
     if (hit.kind === 'supplier') {
       void navigate({ to: '/app/suppliers', search: { q: term } });
       return;
@@ -140,10 +207,40 @@ export function WorkspaceSearch() {
     void navigate({ to: '/app/hr/employees', search: { q: term } });
   }
 
-  function openProductList() {
-    setOpen(false);
-    setQuery('');
-    void navigate({ to: '/app/inventory/products', search: { q: term } });
+  async function runAction(hit: WorkspaceSearchHit, action: 'view' | 'print' | 'download') {
+    const key = `${hit.kind}:${hit.id}:${action}`;
+    setBusyKey(key);
+    try {
+      if (hit.kind === 'invoice') {
+        if (action === 'view') {
+          openHit(hit);
+          return;
+        }
+        const blob = await downloadInvoicePdf(hit.id);
+        await presentBlob(blob, action, hit.fileName);
+        return;
+      }
+      if (hit.kind === 'document' && hit.documentSource === 'quotation') {
+        const blob = await downloadQuotationPdf(hit.id);
+        await presentBlob(blob, action === 'print' ? 'view' : action, hit.fileName);
+        if (action === 'view') close();
+        return;
+      }
+      if (hit.kind === 'document') {
+        const blob = await loadCompanyAssetBlob(hit.id);
+        await presentBlob(blob, action === 'print' ? 'view' : action, hit.fileName);
+        if (action === 'view') close();
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      toast.error(
+        message && message !== 'Could not open this file.'
+          ? message
+          : t('Could not open this file.'),
+      );
+    } finally {
+      setBusyKey(null);
+    }
   }
 
   function onInputKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
@@ -166,17 +263,12 @@ export function WorkspaceSearch() {
       event.preventDefault();
       const hit = hits[activeIndex];
       if (hit) openHit(hit);
-      else if (!loading) openProductList();
+      else if (!loading) {
+        close();
+        void navigate({ to: '/app/inventory/products', search: { q: term } });
+      }
     }
   }
-
-  const groups: Array<{ kind: WorkspaceSearchKind; items: WorkspaceSearchHit[] }> = [
-    { kind: 'product', items: result.products },
-    { kind: 'customer', items: result.customers },
-    { kind: 'invoice', items: result.invoices },
-    { kind: 'supplier', items: result.suppliers },
-    { kind: 'employee', items: result.employees },
-  ];
 
   let cursor = 0;
 
@@ -194,8 +286,8 @@ export function WorkspaceSearch() {
         aria-expanded={open && Boolean(term)}
         aria-controls={listId}
         aria-autocomplete="list"
-        aria-label={t('Search products, customers, invoices…')}
-        placeholder={t('Search products, customers, invoices…')}
+        aria-label={t('Search products, invoices, documents, people…')}
+        placeholder={t('Search products, invoices, documents, people…')}
         className="border-border bg-muted/50 focus-visible:ring-primary/30 h-9 rounded-lg ps-9 pe-14"
         onChange={(event) => {
           setQuery(event.target.value);
@@ -212,7 +304,7 @@ export function WorkspaceSearch() {
         <div
           id={listId}
           role="listbox"
-          className="border-border bg-popover text-popover-foreground absolute start-0 top-full z-50 mt-1.5 max-h-80 w-[min(92vw,420px)] overflow-y-auto rounded-xl border shadow-lg"
+          className="border-border bg-popover text-popover-foreground absolute start-0 top-full z-50 mt-1.5 max-h-[28rem] w-[min(94vw,560px)] overflow-y-auto rounded-xl border shadow-lg"
         >
           {loading && hits.length === 0 ? (
             <div className="text-muted-foreground flex items-center gap-2 px-3 py-3 text-sm">
@@ -234,7 +326,6 @@ export function WorkspaceSearch() {
           ) : null}
 
           {groups.map((group) => {
-            if (group.items.length === 0) return null;
             const start = cursor;
             cursor += group.items.length;
             return (
@@ -248,44 +339,105 @@ export function WorkspaceSearch() {
                 {group.items.map((hit, index) => {
                   const flatIndex = start + index;
                   const active = flatIndex === activeIndex;
+                  const busy = busyKey?.startsWith(`${hit.kind}:${hit.id}:`) ?? false;
+                  const invoiceHint =
+                    hit.kind === 'invoice'
+                      ? [
+                          t(INVOICE_STATUS[hit.status ?? ''] ?? hit.status ?? 'Invoice'),
+                          Number.isFinite(hit.amount) ? formatCurrency(hit.amount ?? 0) : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : '';
                   return (
-                    <button
+                    <div
                       key={`${hit.kind}-${hit.id}-${hit.title}`}
-                      type="button"
                       role="option"
                       aria-selected={active}
                       className={cn(
-                        'flex w-full items-center gap-2.5 px-3 py-2 text-start text-sm',
+                        'flex w-full items-center gap-2 px-3 py-2 text-start text-sm',
                         active ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/70',
                       )}
                       onMouseEnter={() => setActiveIndex(flatIndex)}
-                      onClick={() => openHit(hit)}
                     >
-                      <GroupIcon kind={hit.kind} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{hit.title}</span>
-                        {hit.subtitle ? (
-                          <span className="text-muted-foreground block truncate text-xs">
-                            {hit.subtitle}
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-2.5 text-start"
+                        onClick={() => openHit(hit)}
+                      >
+                        <GroupIcon kind={hit.kind} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">{hit.title}</span>
+                          {hit.kind === 'user' && hit.role ? (
+                            <span className="text-muted-foreground block truncate text-xs">
+                              {[t(hit.role), hit.subtitle, hit.inactive ? t('Inactive') : '']
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </span>
+                          ) : hit.subtitle ? (
+                            <span className="text-muted-foreground block truncate text-xs">
+                              {hit.subtitle}
+                            </span>
+                          ) : null}
+                        </span>
+                      </button>
+                      {hit.kind === 'product' && hit.stockLeft != null ? (
+                        <span className="text-muted-foreground shrink-0 text-xs">
+                          {hit.stockLeft <= 0
+                            ? t('None left')
+                            : t('{count} left', { count: hit.stockLeft })}
+                        </span>
+                      ) : null}
+                      {hit.kind === 'invoice' ? (
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-0.5">
+                          <span className="text-muted-foreground me-1 max-w-[9rem] truncate text-[11px]">
+                            {invoiceHint}
                           </span>
-                        ) : null}
-                      </span>
-                    </button>
+                          <ActionButton
+                            label={t('View')}
+                            hint={t('Open this invoice')}
+                            disabled={busy}
+                            onClick={() => openHit(hit)}
+                          />
+                          <ActionButton
+                            label={t('Print')}
+                            hint={t('Print this invoice')}
+                            disabled={busy}
+                            onClick={() => void runAction(hit, 'print')}
+                          />
+                          <ActionButton
+                            label={t('Download')}
+                            hint={t('Save the PDF')}
+                            disabled={busy}
+                            onClick={() => void runAction(hit, 'download')}
+                          />
+                        </div>
+                      ) : null}
+                      {hit.kind === 'document' ? (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <span className="text-muted-foreground me-1 text-[11px]">
+                            {hit.mimeType?.includes('pdf') ? t('PDF') : t('File')}
+                          </span>
+                          <ActionButton
+                            label={t('View')}
+                            hint={t('Open this file')}
+                            disabled={busy}
+                            onClick={() => void runAction(hit, 'view')}
+                          />
+                          <ActionButton
+                            label={t('Download')}
+                            hint={t('Download this file')}
+                            disabled={busy}
+                            onClick={() => void runAction(hit, 'download')}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>
             );
           })}
-
-          {result.products.length > 0 ? (
-            <button
-              type="button"
-              className="text-primary hover:bg-muted/70 w-full px-3 py-2 text-start text-xs font-medium"
-              onClick={openProductList}
-            >
-              {t('See all product matches')}
-            </button>
-          ) : null}
         </div>
       ) : null}
     </div>

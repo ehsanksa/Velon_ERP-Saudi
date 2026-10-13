@@ -85,14 +85,18 @@ export function companyAssetDownloadUrl(id: string) {
   return `${API_V1_BASE}/crm/company-assets/${id}/download`;
 }
 
-export async function downloadCompanyAsset(id: string, fileName?: string) {
+export async function loadCompanyAssetBlob(id: string) {
   const token = getAccessToken();
   const res = await fetch(companyAssetDownloadUrl(id), {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to download asset');
-  const blob = await res.blob();
+  return res.blob();
+}
+
+export async function downloadCompanyAsset(id: string, fileName?: string) {
+  const blob = await loadCompanyAssetBlob(id);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;

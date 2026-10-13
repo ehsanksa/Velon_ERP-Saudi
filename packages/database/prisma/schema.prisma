@@ -1052,6 +1052,11 @@ enum InventoryProductStatus {
   DISCONTINUED
 }
 
+enum InventoryItemType {
+  PRODUCT
+  SERVICE
+}
+
 enum InventoryUom {
   EACH
   KG
@@ -1153,6 +1158,7 @@ model InventoryProduct {
   name          String
   description   String?
   categoryId    String?
+  itemType      InventoryItemType      @default(PRODUCT)
   uom           InventoryUom           @default(EACH)
   status        InventoryProductStatus @default(ACTIVE)
   imageDataUrl  String?
@@ -1183,6 +1189,7 @@ model InventoryProduct {
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, itemType])
   @@index([tenantId, hasVariants])
 }
 

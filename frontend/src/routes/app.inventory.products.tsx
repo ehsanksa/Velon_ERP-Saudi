@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Barcode, Package, Plus } from 'lucide-react';
+import { Barcode, Package, Plus, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { canManageInventory, normalizeVelonRole } from '@velon/shared';
 import { BarcodeManagementDialog } from '@/components/inventory/barcode-management-dialog';
 import { ExpiryDateFields } from '@/components/inventory/expiry-date-fields';
+import { ProductImportDialog } from '@/components/inventory/product-import-dialog';
 import {
   buildVariantsPayload,
   ProductVariantsSection,
@@ -72,6 +73,7 @@ function InventoryProductsPage() {
   const [warehouses, setWarehouses] = useState<InventoryWarehouse[]>([]);
   const [busy, setBusy] = useState(false);
   const [barcodeOpen, setBarcodeOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productMoreOpen, setProductMoreOpen] = useState(false);
   const [hasVariants, setHasVariants] = useState(false);
@@ -88,10 +90,12 @@ function InventoryProductsPage() {
     quantity: '0',
     unitPrice: '0',
     status: 'ACTIVE',
+    itemType: 'PRODUCT' as 'PRODUCT' | 'SERVICE',
   });
   const [batchTracked, setBatchTracked] = useState(false);
   const [mfgDate, setMfgDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
+  const isService = form.itemType === 'SERVICE';
 
   const refresh = useCallback(async () => {
     const [p, c, w] = await Promise.all([
@@ -123,6 +127,7 @@ function InventoryProductsPage() {
       quantity: '0',
       unitPrice: '0',
       status: 'ACTIVE',
+      itemType: 'PRODUCT',
     });
     setBatchTracked(false);
     setMfgDate('');
@@ -141,6 +146,7 @@ function InventoryProductsPage() {
       quantity: '0',
       unitPrice: String(p.unitPrice),
       status: p.status,
+      itemType: p.itemType === 'SERVICE' ? 'SERVICE' : 'PRODUCT',
     });
     setHasVariants(p.hasVariants ?? false);
     if (p.hasVariants) {
@@ -178,7 +184,7 @@ function InventoryProductsPage() {
 
   async function handleSave() {
     if (!canManage || !form.name.trim()) return;
-    if (hasVariants) {
+    if (!isService && hasVariants) {
       const hasAttribute = variantAttributes.some(
         (a) => a.name.trim() && a.values.some((v) => v.trim()),
       );
@@ -207,11 +213,12 @@ function InventoryProductsPage() {
     }
     setBusy(true);
     try {
-      const syncedAttributes = hasVariants
+      const useVariants = !isService && hasVariants;
+      const syncedAttributes = useVariants
         ? (variantsSectionRef.current?.syncAttributes() ?? variantAttributes)
         : variantAttributes;
       const variantsPayload = buildVariantsPayload(
-        hasVariants,
+        useVariants,
         syncedAttributes,
         variantRows,
         form.warehouseId,
@@ -219,18 +226,19 @@ function InventoryProductsPage() {
       const body = {
         name: form.name.trim(),
         sku: form.sku.trim() || undefined,
-        barcode: hasVariants ? undefined : form.barcode.trim() || undefined,
+        itemType: form.itemType,
+        barcode: useVariants ? undefined : form.barcode.trim() || undefined,
         imageDataUrl: form.imageDataUrl.trim() || undefined,
         categoryId: form.categoryId || undefined,
-        unitPrice: hasVariants ? 0 : Number.parseFloat(form.unitPrice) || 0,
+        unitPrice: useVariants ? 0 : Number.parseFloat(form.unitPrice) || 0,
         status: form.status,
-        hasVariants,
+        hasVariants: useVariants,
         variants: variantsPayload,
-        site: warehouses.find((w) => w.id === form.warehouseId)?.name,
-        quantity: hasVariants ? 0 : Number.parseInt(form.quantity, 10) || 0,
-        batchTracked,
-        mfgDate: batchTracked ? mfgDate : undefined,
-        expiryDate: batchTracked ? expiryDate : undefined,
+        site: isService ? undefined : warehouses.find((w) => w.id === form.warehouseId)?.name,
+        quantity: isService || useVariants ? 0 : Number.parseInt(form.quantity, 10) || 0,
+        batchTracked: isService ? false : batchTracked,
+        mfgDate: !isService && batchTracked ? mfgDate : undefined,
+        expiryDate: !isService && batchTracked ? expiryDate : undefined,
       };
       if (editingId) {
         await updateInventoryProduct(editingId, body);
@@ -252,33 +260,68 @@ function InventoryProductsPage() {
     <div className="space-y-4">
       {canManage && (
         <Card className="border-border bg-card p-4">
-          <h2 className="font-medium">{editingId ? 'Edit product' : 'New product'}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-medium">{editingId ? t('Edit product') : t('New product')}</h2>
+            {!editingId && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setImportOpen(true)}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {t('Import CSV')}
+              </Button>
+            )}
+          </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <Label>Name</Label>
+              <Label>{t('Name')}</Label>
               <Input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="What you sell"
+                placeholder={t('What you sell')}
               />
             </div>
             <div>
-              <Label>Selling price</Label>
+              <Label>{t('Type')}</Label>
+              <Select
+                value={form.itemType}
+                onValueChange={(v) => {
+                  const itemType = v === 'SERVICE' ? 'SERVICE' : 'PRODUCT';
+                  setForm((f) => ({ ...f, itemType }));
+                  if (itemType === 'SERVICE') {
+                    setHasVariants(false);
+                    setBatchTracked(false);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PRODUCT">{t('Product (stocked)')}</SelectItem>
+                  <SelectItem value="SERVICE">{t('Service (no stock)')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t('Selling price')}</Label>
               <Input
                 value={form.unitPrice}
-                disabled={hasVariants}
+                disabled={!isService && hasVariants}
                 onChange={(e) => setForm((f) => ({ ...f, unitPrice: e.target.value }))}
                 placeholder="0"
               />
-              {hasVariants ? (
+              {!isService && hasVariants ? (
                 <p className="text-muted-foreground mt-1 text-xs">
-                  Price is set per variant when variants are enabled.
+                  {t('Price is set per variant when variants are enabled.')}
                 </p>
               ) : null}
             </div>
-            {!editingId && !hasVariants && (
+            {!editingId && !isService && !hasVariants && (
               <div>
-                <Label>Opening stock</Label>
+                <Label>{t('Opening stock')}</Label>
                 <Input
                   value={form.quantity}
                   onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
@@ -286,14 +329,14 @@ function InventoryProductsPage() {
                 />
               </div>
             )}
-            {!editingId && !hasVariants ? (
+            {!editingId && !isService && !hasVariants ? (
               <div className="space-y-3 sm:col-span-2">
                 <label className="flex cursor-pointer items-center gap-2 text-sm">
                   <Checkbox
                     checked={batchTracked}
                     onCheckedChange={(c) => setBatchTracked(c === true)}
                   />
-                  This product has manufacturing and expiry dates.
+                  {t('This product has manufacturing and expiry dates.')}
                 </label>
                 <ExpiryDateFields
                   enabled={batchTracked}
@@ -366,9 +409,9 @@ function InventoryProductsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {!editingId && (
+                {!editingId && !isService && (
                   <div>
-                    <Label>Warehouse</Label>
+                    <Label>{t('Warehouse')}</Label>
                     <Select
                       value={form.warehouseId || 'none'}
                       onValueChange={(v) =>
@@ -376,10 +419,10 @@ function InventoryProductsPage() {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Warehouse" />
+                        <SelectValue placeholder={t('Warehouse')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="none">{t('None')}</SelectItem>
                         {warehouses.map((w) => (
                           <SelectItem
                             key={w.id}
@@ -411,24 +454,30 @@ function InventoryProductsPage() {
               </MoreOptionsSection>
             </div>
           </div>
-          <ProductVariantsSection
-            ref={variantsSectionRef}
-            enabled={hasVariants}
-            onEnabledChange={(enabled) => {
-              setHasVariants(enabled);
-              if (enabled && variantAttributes.length === 0) {
-                setVariantAttributes([{ id: crypto.randomUUID(), name: '', values: [''] }]);
-              }
-            }}
-            readOnly={!canManage}
-            baseSku={form.sku}
-            defaultPrice={form.unitPrice}
-            warehouseId={form.warehouseId}
-            attributes={variantAttributes}
-            onAttributesChange={setVariantAttributes}
-            variants={variantRows}
-            onVariantsChange={setVariantRows}
-          />
+          {!isService ? (
+            <ProductVariantsSection
+              ref={variantsSectionRef}
+              enabled={hasVariants}
+              onEnabledChange={(enabled) => {
+                setHasVariants(enabled);
+                if (enabled && variantAttributes.length === 0) {
+                  setVariantAttributes([{ id: crypto.randomUUID(), name: '', values: [''] }]);
+                }
+              }}
+              readOnly={!canManage}
+              baseSku={form.sku}
+              defaultPrice={form.unitPrice}
+              warehouseId={form.warehouseId}
+              attributes={variantAttributes}
+              onAttributesChange={setVariantAttributes}
+              variants={variantRows}
+              onVariantsChange={setVariantRows}
+            />
+          ) : (
+            <p className="text-muted-foreground mt-3 text-sm">
+              {t('Services are sold without inventory tracking or variants.')}
+            </p>
+          )}
           <div className="mt-3 flex gap-2">
             <Button
               size="sm"
@@ -436,7 +485,11 @@ function InventoryProductsPage() {
               onClick={handleSave}
             >
               <Plus className="mr-2 h-4 w-4" />
-              {editingId ? 'Save changes' : 'Create product'}
+              {editingId
+                ? t('Save changes')
+                : isService
+                  ? t('Create service')
+                  : t('Create product')}
             </Button>
             {editingId && (
               <Button
@@ -468,16 +521,28 @@ function InventoryProductsPage() {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Product listing</h2>
-        {canManage && products.length > 0 ? (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setBarcodeOpen(true)}
-          >
-            <Barcode className="mr-2 h-4 w-4" />
-            Barcode management
-          </Button>
+        <h2 className="text-lg font-semibold">{t('Product listing')}</h2>
+        {canManage ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {t('Import CSV')}
+            </Button>
+            {products.length > 0 ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setBarcodeOpen(true)}
+              >
+                <Barcode className="mr-2 h-4 w-4" />
+                {t('Barcode management')}
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -485,15 +550,16 @@ function InventoryProductsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>SKU</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Variants</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Barcode</TableHead>
-              <TableHead>Image</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Price</TableHead>
-              {canManage && <TableHead className="text-right">Actions</TableHead>}
+              <TableHead>{t('SKU')}</TableHead>
+              <TableHead>{t('Name')}</TableHead>
+              <TableHead>{t('Type')}</TableHead>
+              <TableHead>{t('Variants')}</TableHead>
+              <TableHead>{t('Category')}</TableHead>
+              <TableHead>{t('Barcode')}</TableHead>
+              <TableHead>{t('Image')}</TableHead>
+              <TableHead>{t('Status')}</TableHead>
+              <TableHead>{t('Price')}</TableHead>
+              {canManage && <TableHead className="text-right">{t('Actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -502,8 +568,15 @@ function InventoryProductsPage() {
                 <TableCell className="font-mono text-xs">{p.sku}</TableCell>
                 <TableCell>{p.name}</TableCell>
                 <TableCell>
+                  <Badge variant="outline">
+                    {p.itemType === 'SERVICE' ? t('Service') : t('Product')}
+                  </Badge>
+                </TableCell>
+                <TableCell>
                   {p.hasVariants ? (
-                    <Badge variant="outline">{p.variantCount ?? 0} variants</Badge>
+                    <Badge variant="outline">
+                      {t('{count} variants', { count: String(p.variantCount ?? 0) })}
+                    </Badge>
                   ) : (
                     '—'
                   )}
@@ -532,7 +605,7 @@ function InventoryProductsPage() {
                       variant="outline"
                       onClick={() => startEdit(p)}
                     >
-                      Edit
+                      {t('Edit')}
                     </Button>
                   </TableCell>
                 )}
@@ -541,7 +614,7 @@ function InventoryProductsPage() {
             {products.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={canManage ? 9 : 8}
+                  colSpan={canManage ? 10 : 9}
                   className="p-0"
                 >
                   <ModuleEmptyState
@@ -570,6 +643,12 @@ function InventoryProductsPage() {
               <div>
                 <p className="font-medium">{p.name}</p>
                 <p className="text-muted-foreground text-xs">{p.sku}</p>
+                <Badge
+                  variant="outline"
+                  className="mt-1"
+                >
+                  {p.itemType === 'SERVICE' ? t('Service') : t('Product')}
+                </Badge>
               </div>
               <Badge variant="secondary">{p.status}</Badge>
             </div>
@@ -613,6 +692,14 @@ function InventoryProductsPage() {
         onSaveBarcode={async (productId, barcode) => {
           await updateInventoryProduct(productId, { barcode });
           await refresh();
+        }}
+      />
+
+      <ProductImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={() => {
+          void refresh();
         }}
       />
     </div>

@@ -5,7 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { InventoryAbcClass, InventoryProductStatus, InventoryVelocity } from '@velon/database';
+import {
+  InventoryAbcClass,
+  InventoryItemType,
+  InventoryProductStatus,
+  InventoryVelocity,
+} from '@velon/database';
 import { canManageInventory, canReadInventory, normalizeVelonRole } from '@velon/shared';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -298,12 +303,15 @@ export class InventoryService {
     this.assertManage(user);
     const sku = dto.sku?.trim() || (await this.nextSku());
     await this.variantsService.assertProductSkuAvailable(sku);
+    const itemType = dto.itemType ?? InventoryItemType.PRODUCT;
+    const isService = itemType === InventoryItemType.SERVICE;
 
     const product = await this.products.create({
       sku,
       name: dto.name.trim(),
       description: dto.description?.trim() || null,
       categoryId: dto.categoryId || null,
+      itemType,
       uom: dto.uom,
       status: dto.status ?? InventoryProductStatus.ACTIVE,
       imageDataUrl: dto.imageDataUrl || null,
@@ -311,16 +319,16 @@ export class InventoryService {
       unitPrice: dto.unitPrice ?? 0,
       abcClass: dto.abcClass,
       velocity: dto.velocity,
-      batchTracked: dto.batchTracked ?? false,
+      batchTracked: isService ? false : (dto.batchTracked ?? false),
       costPrice: dto.costPrice ?? 0,
       variantParent: dto.variantParent?.trim() || null,
-      hasVariants: dto.hasVariants ?? false,
+      hasVariants: isService ? false : (dto.hasVariants ?? false),
       createdById: user.id,
     });
 
     try {
       let defaultWarehouseId: string | undefined;
-      if (dto.site?.trim()) {
+      if (!isService && dto.site?.trim()) {
         let warehouse = await this.warehouses.findByName(dto.site.trim());
         if (!warehouse) {
           const code = this.warehouseCode(dto.site);
@@ -349,12 +357,12 @@ export class InventoryService {
             });
           }
         }
-      } else if (dto.variants?.hasVariants && dto.variants.variants?.length) {
+      } else if (!isService && dto.variants?.hasVariants && dto.variants.variants?.length) {
         const defaultWarehouse = (await this.warehouses.findMany(true))[0];
         defaultWarehouseId = defaultWarehouse?.id;
       }
 
-      if (dto.variants?.hasVariants) {
+      if (!isService && dto.variants?.hasVariants) {
         await this.variantsService.saveVariantsForProduct(
           user,
           product.id,
@@ -371,14 +379,14 @@ export class InventoryService {
         action: 'inventory.product_created',
         entityType: 'inventory_product',
         entityId: product.id,
-        metadata: { sku: product.sku, name: product.name },
+        metadata: { sku: product.sku, name: product.name, itemType },
         ipAddress: meta.ip,
         userAgent: meta.ua,
       });
 
       this.notifyInventoryProduct(user, product, 'created');
 
-      return dto.variants?.hasVariants
+      return !isService && dto.variants?.hasVariants
         ? this.variantsService.getProductWithVariants(user, product.id)
         : product;
     } catch (err) {
@@ -403,6 +411,7 @@ export class InventoryService {
       ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
       ...(dto.description !== undefined ? { description: dto.description?.trim() || null } : {}),
       ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId || null } : {}),
+      ...(dto.itemType !== undefined ? { itemType: dto.itemType } : {}),
       ...(dto.uom !== undefined ? { uom: dto.uom } : {}),
       ...(dto.status !== undefined ? { status: dto.status } : {}),
       ...(dto.imageDataUrl !== undefined ? { imageDataUrl: dto.imageDataUrl || null } : {}),
@@ -410,7 +419,14 @@ export class InventoryService {
       ...(dto.unitPrice !== undefined ? { unitPrice: dto.unitPrice } : {}),
       ...(dto.abcClass !== undefined ? { abcClass: dto.abcClass } : {}),
       ...(dto.velocity !== undefined ? { velocity: dto.velocity } : {}),
-      ...(dto.batchTracked !== undefined ? { batchTracked: dto.batchTracked } : {}),
+      ...(dto.batchTracked !== undefined
+        ? {
+            batchTracked:
+              (dto.itemType ?? row.itemType) === InventoryItemType.SERVICE
+                ? false
+                : dto.batchTracked,
+          }
+        : {}),
       ...(dto.costPrice !== undefined ? { costPrice: dto.costPrice } : {}),
       ...(dto.variantParent !== undefined
         ? { variantParent: dto.variantParent?.trim() || null }

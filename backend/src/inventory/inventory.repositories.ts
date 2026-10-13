@@ -74,6 +74,14 @@ export class InventoryProductRepository extends TenantScopedRepository {
     });
   }
 
+  findBySkus(skus: string[]) {
+    if (skus.length === 0) return Promise.resolve([]);
+    return this.prisma.client.inventoryProduct.findMany({
+      where: this.where({ sku: { in: skus } }),
+      select: { id: true, sku: true, name: true, status: true, itemType: true },
+    });
+  }
+
   count() {
     return this.prisma.client.inventoryProduct.count({ where: this.where() });
   }

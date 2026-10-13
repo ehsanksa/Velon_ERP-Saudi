@@ -23,6 +23,7 @@ import { PermissionGuard } from '../auth/guards/permission.guard';
 import { PortalScopeGuard } from '../auth/guards/portal-scope.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { TenantScopeGuard } from '../auth/guards/tenant-scope.guard';
+import { InventoryImportRequestDto } from './dto/inventory-import.dto';
 import {
   AdjustInventoryStockDto,
   CreateInventoryCategoryDto,
@@ -34,6 +35,7 @@ import {
   UpdateInventoryWarehouseDto,
   UpdateStockLevelsDto,
 } from './dto/inventory.dto';
+import { InventoryImportService } from './inventory-import.service';
 import { InventoryService } from './inventory.service';
 
 function reqMeta(req: Request) {
@@ -50,7 +52,10 @@ function reqMeta(req: Request) {
 @Roles(UserRole.TENANT_OWNER, UserRole.TENANT_ADMIN, UserRole.DEPARTMENT_ADMIN, UserRole.USER)
 @ApiBearerAuth()
 export class InventoryController {
-  constructor(private readonly inventory: InventoryService) {}
+  constructor(
+    private readonly inventory: InventoryService,
+    private readonly inventoryImport: InventoryImportService,
+  ) {}
 
   @Get('categories')
   @RequirePermission('inventory:read', 'inventory:*')
@@ -84,6 +89,28 @@ export class InventoryController {
   @RequirePermission('inventory:read', 'inventory:*')
   listProducts(@CurrentUser() user: AuthenticatedUser, @Query('search') search?: string) {
     return this.inventory.listProductsWithVariantCounts(user, search);
+  }
+
+  @Get('products/import/template')
+  @RequirePermission('inventory:write', 'inventory:*')
+  importTemplate() {
+    return this.inventoryImport.getTemplate();
+  }
+
+  @Post('products/import/validate')
+  @RequirePermission('inventory:write', 'inventory:*')
+  validateImport(@CurrentUser() user: AuthenticatedUser, @Body() dto: InventoryImportRequestDto) {
+    return this.inventoryImport.validate(user, dto.rows, dto.options ?? {});
+  }
+
+  @Post('products/import')
+  @RequirePermission('inventory:write', 'inventory:*')
+  executeImport(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: InventoryImportRequestDto,
+    @Req() req: Request,
+  ) {
+    return this.inventoryImport.execute(user, dto.rows, dto.options ?? {}, reqMeta(req));
   }
 
   @Get('products/:id/variants')

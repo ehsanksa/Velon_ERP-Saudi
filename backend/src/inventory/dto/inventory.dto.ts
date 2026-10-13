@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 import {
   InventoryAbcClass,
+  InventoryItemType,
   InventoryProductStatus,
   InventoryUom,
   InventoryVelocity,
@@ -199,6 +200,11 @@ export class CreateInventoryProductDto {
   @IsString()
   categoryId?: string;
 
+  @ApiPropertyOptional({ enum: InventoryItemType })
+  @IsOptional()
+  @IsEnum(InventoryItemType)
+  itemType?: InventoryItemType;
+
   @ApiPropertyOptional({ enum: InventoryUom })
   @IsOptional()
   @IsEnum(InventoryUom)
@@ -312,6 +318,11 @@ export class UpdateInventoryProductDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  @ApiPropertyOptional({ enum: InventoryItemType })
+  @IsOptional()
+  @IsEnum(InventoryItemType)
+  itemType?: InventoryItemType;
 
   @ApiPropertyOptional({ enum: InventoryUom })
   @IsOptional()

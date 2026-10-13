@@ -12,6 +12,7 @@ export type InventoryProduct = {
   sku: string;
   name: string;
   description: string | null;
+  itemType?: 'PRODUCT' | 'SERVICE';
   status: string;
   uom: string;
   unitPrice: number;
@@ -26,6 +27,53 @@ export type InventoryProduct = {
   category?: { id: string; name: string } | null;
   attributes?: ProductVariantAttribute[];
   variants?: ProductVariant[];
+};
+
+export type InventoryImportOptions = {
+  createMissingCategories?: boolean;
+  updateExisting?: boolean;
+  stageForApproval?: boolean;
+  createMissingWarehouses?: boolean;
+};
+
+export type InventoryImportIssue = {
+  row: number;
+  field?: string;
+  message: string;
+  severity: 'error' | 'warning';
+};
+
+export type InventoryImportPreview = {
+  total: number;
+  valid: number;
+  createCount: number;
+  updateCount: number;
+  errorCount: number;
+  warningCount: number;
+  issues: InventoryImportIssue[];
+  rows: Array<{
+    rowNumber: number;
+    sku: string | null;
+    name: string;
+    itemType: string;
+    action: 'create' | 'update' | 'skip';
+  }>;
+};
+
+export type InventoryImportResult = InventoryImportPreview & {
+  created: number;
+  updated: number;
+  categoriesCreated: number;
+  warehousesCreated: number;
+  productIds: string[];
+};
+
+export type InventoryImportTemplate = {
+  columns: string[];
+  sampleRows: Record<string, string>[];
+  csv: string;
+  filename: string;
+  notes: string[];
 };
 
 export type ProductVariantAttribute = {
@@ -245,5 +293,29 @@ export async function updateInventoryStock(id: string, body: Record<string, unkn
   return apiFetch<InventoryStockRow>(`/inventory/stock/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
+  });
+}
+
+export async function getInventoryImportTemplate() {
+  return apiFetch<InventoryImportTemplate>('/inventory/products/import/template');
+}
+
+export async function validateInventoryImport(
+  rows: Record<string, unknown>[],
+  options: InventoryImportOptions = {},
+) {
+  return apiFetch<InventoryImportPreview>('/inventory/products/import/validate', {
+    method: 'POST',
+    body: JSON.stringify({ rows, options }),
+  });
+}
+
+export async function executeInventoryImport(
+  rows: Record<string, unknown>[],
+  options: InventoryImportOptions = {},
+) {
+  return apiFetch<InventoryImportResult>('/inventory/products/import', {
+    method: 'POST',
+    body: JSON.stringify({ rows, options }),
   });
 }
