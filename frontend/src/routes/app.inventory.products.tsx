@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Barcode, Package, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { canManageInventory, normalizeVelonRole } from '@velon/shared';
@@ -35,6 +35,7 @@ import {
 import { ModuleEmptyState } from '@/components/workspace/module-empty-state';
 import { MoreOptionsSection } from '@/components/workspace/more-options-section';
 import { getSessionMembershipRole } from '@/lib/auth/session';
+import { useT } from '@/lib/i18n/locale-context';
 import {
   createInventoryProduct,
   getInventoryProduct,
@@ -54,10 +55,17 @@ import {
 } from '@/lib/inventory/variants';
 
 export const Route = createFileRoute('/app/inventory/products')({
+  validateSearch: (search: Record<string, unknown>): { q?: string } => {
+    const q = typeof search.q === 'string' ? search.q.trim() : '';
+    return q ? { q } : {};
+  },
   component: InventoryProductsPage,
 });
 
 function InventoryProductsPage() {
+  const { q } = Route.useSearch();
+  const navigate = useNavigate();
+  const t = useT();
   const canManage = canManageInventory(normalizeVelonRole(getSessionMembershipRole() ?? 'USER'));
   const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [categories, setCategories] = useState<InventoryCategory[]>([]);
@@ -87,14 +95,14 @@ function InventoryProductsPage() {
 
   const refresh = useCallback(async () => {
     const [p, c, w] = await Promise.all([
-      listInventoryProducts(),
+      listInventoryProducts(q),
       listInventoryCategories(),
       listInventoryWarehouses(),
     ]);
     setProducts(p);
     setCategories(c);
     setWarehouses(w);
-  }, []);
+  }, [q]);
 
   useEffect(() => {
     refresh().catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to load products'));
@@ -443,6 +451,22 @@ function InventoryProductsPage() {
         </Card>
       )}
 
+      {q ? (
+        <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+          <span>{t('Showing products matching “{query}”', { query: q })}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              void navigate({ to: '/app/inventory/products', search: {} });
+            }}
+          >
+            {t('Clear search')}
+          </Button>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Product listing</h2>
         {canManage && products.length > 0 ? (
@@ -522,8 +546,12 @@ function InventoryProductsPage() {
                 >
                   <ModuleEmptyState
                     icon={Package}
-                    title="No products yet"
-                    description="Add what you sell above — then use them in invoices and quotes."
+                    title={q ? t('No products match “{query}”', { query: q }) : 'No products yet'}
+                    description={
+                      q
+                        ? t('Try another name, SKU, or barcode.')
+                        : 'Add what you sell above — then use them in invoices and quotes.'
+                    }
                   />
                 </TableCell>
               </TableRow>
@@ -568,8 +596,12 @@ function InventoryProductsPage() {
         {products.length === 0 && (
           <ModuleEmptyState
             icon={Package}
-            title="No products yet"
-            description="Add what you sell above — then use them in invoices and quotes."
+            title={q ? t('No products match “{query}”', { query: q }) : 'No products yet'}
+            description={
+              q
+                ? t('Try another name, SKU, or barcode.')
+                : 'Add what you sell above — then use them in invoices and quotes.'
+            }
           />
         )}
       </div>

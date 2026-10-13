@@ -45,19 +45,20 @@ const crmSections = ['customers', 'contacts', 'activities', 'notes'] as const;
 type CrmSection = (typeof crmSections)[number];
 
 export const Route = createFileRoute('/app/customers')({
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (search: Record<string, unknown>): { section: CrmSection; q?: string } => {
     const section = typeof search.section === 'string' ? search.section : 'customers';
     const safe = crmSections.includes(section as CrmSection)
       ? (section as CrmSection)
       : 'customers';
-    return { section: safe };
+    const q = typeof search.q === 'string' ? search.q.trim() : '';
+    return q ? { section: safe, q } : { section: safe };
   },
   component: CustomersPage,
 });
 
 function CustomersPage() {
   const router = useRouter();
-  const { section } = Route.useSearch();
+  const { section, q } = Route.useSearch();
   const role = normalizeVelonRole(getSessionMembershipRole() ?? 'USER');
   const userEmail = getSessionUserEmail();
   const canWrite = canWriteCrmRecords(role);
@@ -67,7 +68,7 @@ function CustomersPage() {
   const [contacts, setContacts] = useState<CrmContact[]>([]);
   const [notes, setNotes] = useState<CrmNote[]>([]);
   const [activities, setActivities] = useState<CrmActivity[]>([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(q ?? '');
   const [busy, setBusy] = useState(false);
   const [customerMoreOpen, setCustomerMoreOpen] = useState(false);
 
@@ -117,6 +118,10 @@ function CustomersPage() {
     setNotes(n);
     setActivities(a);
   }, [search]);
+
+  useEffect(() => {
+    if (q) setSearch(q);
+  }, [q]);
 
   useEffect(() => {
     void refresh().catch((e) => toast.error(String(e)));

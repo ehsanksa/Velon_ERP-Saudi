@@ -103,6 +103,7 @@ export function AppShell({
   /** When set, replaces legacy `headerEnd`, theme toggle, and bell (caller supplies full cluster). */
   headerToolbar,
   userMenu,
+  headerSearch,
   sidebarLogoUrl,
   logoNav = { type: 'home' },
   navActiveCheck,
@@ -120,6 +121,8 @@ export function AppShell({
   headerToolbar?: ReactNode;
   /** Profile dropdown (workspace). Falls back to static avatar when omitted. */
   userMenu?: ReactNode;
+  /** Tenant workspace search. Falls back to a static field when omitted. */
+  headerSearch?: ReactNode;
   sidebarLogoUrl?: string;
   /** Logo click behavior — defaults to marketing homepage route. */
   logoNav?: LogoNav;
@@ -216,14 +219,18 @@ export function AppShell({
             </div>
           </div>
           <div className="relative order-3 col-span-3 hidden w-full max-w-[460px] md:block lg:order-none lg:col-span-1">
-            <Search className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-            <Input
-              placeholder={t('Search anything…')}
-              className="border-border bg-muted/50 focus-visible:ring-primary/30 h-9 rounded-lg ps-9 pe-14"
-            />
-            <kbd className="border-border bg-background text-muted-foreground pointer-events-none absolute end-2.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px]">
-              <Command className="h-2.5 w-2.5" />K
-            </kbd>
+            {headerSearch ?? (
+              <>
+                <Search className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <Input
+                  placeholder={t('Search anything…')}
+                  className="border-border bg-muted/50 focus-visible:ring-primary/30 h-9 rounded-lg ps-9 pe-14"
+                />
+                <kbd className="border-border bg-background text-muted-foreground pointer-events-none absolute end-2.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px]">
+                  <Command className="h-2.5 w-2.5" />K
+                </kbd>
+              </>
+            )}
           </div>
           <div className="flex min-w-0 justify-end">
             {headerToolbar !== undefined ? (

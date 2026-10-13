@@ -27,6 +27,10 @@ import {
 } from '@/lib/procurement/api';
 
 export const Route = createFileRoute('/app/suppliers')({
+  validateSearch: (search: Record<string, unknown>): { q?: string } => {
+    const q = typeof search.q === 'string' ? search.q.trim() : '';
+    return q ? { q } : {};
+  },
   component: SuppliersPage,
 });
 
@@ -35,11 +39,12 @@ function statusBadge(status: string) {
 }
 
 function SuppliersPage() {
+  const { q } = Route.useSearch();
   const role = normalizeVelonRole(getSessionMembershipRole() ?? 'USER');
   const canManage = canManageProcurement(role);
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(q ?? '');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [threads, setThreads] = useState<SupplierThread[]>([]);
   const [busy, setBusy] = useState(false);
@@ -53,6 +58,10 @@ function SuppliersPage() {
       setSelectedId(rows[0]?.id ?? null);
     }
   }, [search, selectedId]);
+
+  useEffect(() => {
+    if (q) setSearch(q);
+  }, [q]);
 
   useEffect(() => {
     refresh().catch((e) =>

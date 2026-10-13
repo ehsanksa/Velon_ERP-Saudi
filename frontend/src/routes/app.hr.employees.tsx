@@ -20,13 +20,18 @@ import { getSessionMembershipRole } from '@/lib/auth/session';
 import { createEmployee, deleteEmployee, loadEmployees, type HrEmployee } from '@/lib/hr/api';
 
 export const Route = createFileRoute('/app/hr/employees')({
+  validateSearch: (search: Record<string, unknown>): { q?: string } => {
+    const q = typeof search.q === 'string' ? search.q.trim() : '';
+    return q ? { q } : {};
+  },
   component: HrEmployeesPage,
 });
 
 function HrEmployeesPage() {
+  const { q } = Route.useSearch();
   const canWrite = canWriteHr(normalizeVelonRole(getSessionMembershipRole() ?? 'USER'));
   const [rows, setRows] = useState<HrEmployee[]>([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(q ?? '');
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     firstName: '',
@@ -39,6 +44,10 @@ function HrEmployeesPage() {
   const refresh = useCallback(async () => {
     setRows(await loadEmployees({ search: search || undefined }));
   }, [search]);
+
+  useEffect(() => {
+    if (q) setSearch(q);
+  }, [q]);
 
   useEffect(() => {
     void refresh().catch((e) => toast.error(String(e)));

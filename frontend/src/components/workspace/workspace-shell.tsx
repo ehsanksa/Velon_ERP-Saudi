@@ -7,6 +7,7 @@ import {
   type NotificationPreview,
 } from '@/components/workspace/notification-dropdown';
 import { QuickCreateFab } from '@/components/workspace/quick-create-fab';
+import { WorkspaceSearch } from '@/components/workspace/workspace-search';
 import { WorkspaceUserMenu } from '@/components/workspace/workspace-user-menu';
 import {
   useWorkspaceCurrency,
@@ -215,6 +216,7 @@ function WorkspaceShellInner({
         />
       }
       userMenu={<WorkspaceUserMenu />}
+      headerSearch={<WorkspaceSearch />}
       sidebarLogoUrl={sidebarLogo}
     >
       {children}
