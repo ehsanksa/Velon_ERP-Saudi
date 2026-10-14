@@ -668,4 +668,133 @@ export const AR: Record<string, string> = {
   Price: 'السعر',
   Image: 'الصورة',
   Variants: 'المتغيرات',
+
+  'User guide': 'دليل المستخدم',
+  'How to use Inventory, import CSV, sales, and settings':
+    'كيف تستخدم المخزون واستيراد CSV والمبيعات والإعدادات',
+  'Short how-to for daily work in Velon. Start with Inventory if you are importing a catalog.':
+    'شرح مختصر للعمل اليومي في Velon. ابدأ بالمخزون إذا كنت تستورد كتالوجاً.',
+  'Open Products': 'فتح المنتجات',
+  'Open Stock': 'فتح المخزون',
+  'Why CSV looks different from Inventory screens': 'لماذا يختلف ملف CSV عن شاشات المخزون',
+  'The CSV is a create/update worksheet — one flat row per item. Products and Stock are two screens that show different slices of that same item after import.':
+    'ملف CSV ورقة إنشاء/تحديث — صف واحد لكل عنصر. شاشة المنتجات وشاشة المخزون تعرضان نفس العنصر بطريقتين مختلفتين بعد الاستيراد.',
+  'CSV column': 'عمود CSV',
+  'Products tab': 'تبويب المنتجات',
+  'Stock tab': 'تبويب المخزون',
+  '— (opening only)': '— (افتتاحي فقط)',
+  'Scan-related': 'مرتبط بالمسح',
+  'Stock-only UI fields such as Ext. value, Mfg date, Exp date, and ABC are managed on the Stock screen (or calculated), not in the import template.':
+    'حقول شاشة المخزون فقط مثل القيمة الإجمالية وتاريخ التصنيع والانتهاء وABC تُدار في شاشة المخزون (أو تُحسب)، وليست في قالب الاستيراد.',
+  Import: 'استيراد',
+  'Quick map': 'خريطة سريعة',
+  'You are not wrong — CSV is not a screenshot of Products or Stock':
+    'لست مخطئاً — ملف CSV ليس نسخة من شاشة المنتجات أو المخزون',
+  'One CSV row creates/updates a catalog item and can also set opening stock. Products tab shows master fields; Stock tab shows warehouse quantities.':
+    'كل صف في CSV ينشئ/يحدّث عنصر الكتالوج ويمكنه أيضاً تعيين المخزون الافتتاحي. تبويب المنتجات يعرض بيانات الكتالوج؛ تبويب المخزون يعرض الكميات بالمستودع.',
+  'Products columns: sku, name, itemType, category, barcode, status, unitPrice':
+    'أعمدة المنتجات: sku، name، itemType، category، barcode، status، unitPrice',
+  'Stock columns (PRODUCT only): warehouse, quantity, reorderPoint, safetyStock':
+    'أعمدة المخزون (للمنتجات فقط): warehouse، quantity، reorderPoint، safetyStock',
+  'Not in CSV (use Stock UI later): Ext. value, Mfg/Exp dates, ABC, Scan actions':
+    'ليست في CSV (استخدم شاشة المخزون لاحقاً): القيمة الإجمالية، تواريخ التصنيع/الانتهاء، ABC، إجراءات المسح',
+  'Open full user guide': 'فتح دليل المستخدم كاملاً',
+  'In-app user guide': 'دليل المستخدم داخل التطبيق',
+  'After you sign in, open User guide from the left menu for step-by-step help — including why the Import CSV template differs from Products and Stock layouts.':
+    'بعد تسجيل الدخول، افتح «دليل المستخدم» من القائمة اليسرى لشرح خطوة بخطوة — بما في ذلك لماذا يختلف قالب CSV عن تخطيط المنتجات والمخزون.',
+  'Open workspace user guide': 'فتح دليل مساحة العمل',
+
+  'Products tab vs Stock tab': 'تبويب المنتجات مقابل تبويب المخزون',
+  'You are not wrong — they are different views of the same catalog. The CSV is not a copy of either table layout.':
+    'لست مخطئاً — هما عرضان مختلفان لنفس الكتالوج. ملف CSV ليس نسخة من أي من الجدولين.',
+  'Products tab = product master (what you sell): name, type, category, barcode, status, price.':
+    'تبويب المنتجات = بيانات الكتالوج (ما تبيعه): الاسم، النوع، التصنيف، الباركود، الحالة، السعر.',
+  'Stock tab = warehouse quantities (where it sits): location, on hand, safety, reorder, expiry.':
+    'تبويب المخزون = كميات المستودع (أين يقع): الموقع، المتاح، الأمان، إعادة الطلب، الانتهاء.',
+  'CSV import = one row that creates/updates the product and can also set opening stock.':
+    'استيراد CSV = صف واحد ينشئ/يحدّث المنتج ويمكنه أيضاً تعيين المخزون الافتتاحي.',
+  'After import, open Products to verify catalog fields, then Stock to verify quantities.':
+    'بعد الاستيراد، افتح المنتجات للتحقق من بيانات الكتالوج، ثم المخزون للتحقق من الكميات.',
+  'SERVICE rows skip warehouse/quantity — they appear on Products, not as stock lines.':
+    'صفوف SERVICE تتجاهل المستودع/الكمية — تظهر في المنتجات وليس كأسطر مخزون.',
+  'Columns like EXT. VALUE, SCAN, and ABC are calculated or managed in the Stock UI, not in the CSV.':
+    'أعمدة مثل EXT. VALUE وSCAN وABC تُحسب أو تُدار في شاشة المخزون، وليس في CSV.',
+
+  'How to import products & services (CSV)': 'كيف تستورد المنتجات والخدمات (CSV)',
+  'Use the template from Products → Import CSV. Fill a few test rows, validate, then import the full file.':
+    'استخدم القالب من المنتجات ← استيراد CSV. املأ بضعة صفوف للتجربة، تحقق، ثم استورد الملف كاملاً.',
+  'Go to Inventory → Products → Import CSV → Download template.':
+    'اذهب إلى المخزون ← المنتجات ← استيراد CSV ← تنزيل القالب.',
+  'Keep the header row exactly as downloaded.': 'أبقِ صف العناوين كما هو بعد التنزيل.',
+  'Set itemType to PRODUCT (stocked) or SERVICE (no stock).':
+    'اضبط itemType على PRODUCT (مخزون) أو SERVICE (بدون مخزون).',
+  'For products with opening stock, fill warehouse + quantity (warehouse name must exist, or enable Create missing warehouses).':
+    'للمنتجات ذات المخزون الافتتاحي، املأ warehouse + quantity (يجب أن يوجد اسم المستودع، أو فعّل إنشاء المستودعات الناقصة).',
+  'Upload the file, fix any errors in the validation list, then Import.':
+    'ارفع الملف، صحّح الأخطاء في قائمة التحقق، ثم استورد.',
+  'If Stage as Inactive is on, activate items later by editing Status to Active.':
+    'إذا كان «حفظ كغير نشط» مفعّلاً، فعّل العناصر لاحقاً بتغيير الحالة إلى Active.',
+  'sku → Products SKU': 'sku ← رمز SKU في المنتجات',
+  'name → Products Name': 'name ← الاسم في المنتجات',
+  'itemType → Products Type': 'itemType ← النوع في المنتجات',
+  'category → Products Category': 'category ← التصنيف في المنتجات',
+  'barcode → Products Barcode': 'barcode ← الباركود في المنتجات',
+  'status → Products Status': 'status ← الحالة في المنتجات',
+  'unitPrice → Products Price / Stock Unit price':
+    'unitPrice ← السعر في المنتجات / سعر الوحدة في المخزون',
+  'warehouse → Stock Location': 'warehouse ← الموقع في المخزون',
+  'quantity → Stock On hand': 'quantity ← الكمية المتوفرة في المخزون',
+  'reorderPoint → Stock Reorder': 'reorderPoint ← نقطة إعادة الطلب في المخزون',
+  'safetyStock → Stock Safety': 'safetyStock ← مخزون الأمان',
+  'batchTracked → enables expiry workflow (add mfg/expiry later on Stock if needed)':
+    'batchTracked ← يفعّل مسار تواريخ الانتهاء (أضف تواريخ التصنيع/الانتهاء لاحقاً في المخزون عند الحاجة)',
+
+  'Velon is organized by everyday business words. Start on Dashboard, then set up Inventory, Customers, and Invoices.':
+    'Velon منظّم بكلمات أعمال يومية. ابدأ من لوحة المعلومات، ثم أعد المخزون والعملاء والفواتير.',
+  'Open Settings and confirm workspace name, currency, and language.':
+    'افتح الإعدادات وتأكد من اسم مساحة العمل والعملة واللغة.',
+  'Add Categories and Warehouses under Inventory before a large import.':
+    'أضف التصنيفات والمستودعات تحت المخزون قبل استيراد كبير.',
+  'Create a few products manually, or use Import CSV for many items at once.':
+    'أنشئ بضعة منتجات يدوياً، أو استخدم استيراد CSV لعناصر كثيرة دفعة واحدة.',
+  'Create a customer, then an invoice that picks products from your catalog.':
+    'أنشئ عميلاً، ثم فاتورة تختار منتجات من كتالوجك.',
+
+  'Sales & invoices': 'المبيعات والفواتير',
+  'Sell from your catalog with quotations or invoices.':
+    'بِع من كتالوجك عبر عروض الأسعار أو الفواتير.',
+  'Add customers under Customers.': 'أضف العملاء تحت العملاء.',
+  'Use Sales for leads, quotations, and pipeline.':
+    'استخدم المبيعات للعملاء المحتملين وعروض الأسعار والمسار.',
+  'Create an Invoice and pick products/services from Inventory.':
+    'أنشئ فاتورة واختر منتجات/خدمات من المخزون.',
+  'Services bill without reducing stock; products can consume stock when fulfillment is configured.':
+    'الخدمات تُفوتر دون إنقاص المخزون؛ المنتجات قد تستهلك المخزون عند تهيئة التنفيذ.',
+
+  'Purchases & vendors': 'المشتريات والموردون',
+  'Buy stock from suppliers and receive it into warehouses.':
+    'اشترِ المخزون من الموردين واستلمه في المستودعات.',
+  'Add vendors under Vendors.': 'أضف الموردين تحت الموردون.',
+  'Create purchase documents under Purchases.': 'أنشئ مستندات الشراء تحت المشتريات.',
+  'Receive goods into a warehouse so Stock on hand increases.':
+    'استلم البضاعة في مستودع حتى تزيد الكمية المتوفرة.',
+
+  'Accounting & reports': 'المحاسبة والتقارير',
+  'Track money in/out and export simple reports.': 'تتبع الوارد والصادر وصدر تقارير بسيطة.',
+  'Use Accounting for cashbook-style balances and movement.':
+    'استخدم المحاسبة لأرصدة وحركة بأسلوب دفتر النقدية.',
+  'Open Reports for sales, purchases, and operational summaries.':
+    'افتح التقارير لملخصات المبيعات والمشتريات والعمليات.',
+  'Export CSV from Accounting when you need spreadsheets for auditors or owners.':
+    'صدّر CSV من المحاسبة عندما تحتاج جداول للمراجعين أو الملاك.',
+
+  'Settings & team': 'الإعدادات والفريق',
+  'Control language, roles, and who can edit inventory.':
+    'تحكم باللغة والأدوار ومن يمكنه تعديل المخزون.',
+  'Settings → general preferences for language and workspace defaults.':
+    'الإعدادات ← التفضيلات العامة للغة وإعدادات مساحة العمل.',
+  'Workspace admin (owners/admins) manage users and roles.':
+    'إدارة مساحة العمل (المالك/المديرون) تدير المستخدمين والأدوار.',
+  'Inventory write access is required for Import CSV and Create product.':
+    'صلاحية كتابة المخزون مطلوبة لاستيراد CSV وإنشاء منتج.',
 };

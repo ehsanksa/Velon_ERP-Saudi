@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  BookOpen,
   Boxes,
   FileText,
   LayoutDashboard,
@@ -50,6 +51,7 @@ export function buildWorkspaceNavGroups(badges: WorkspaceNavBadges): NavGroup[] 
           search: { tab: 'general' },
           icon: Settings,
         },
+        { label: 'User guide', to: '/app/help', icon: BookOpen },
       ],
     },
   ];

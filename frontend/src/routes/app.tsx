@@ -95,6 +95,10 @@ function AppLayout() {
       title: 'Settings',
       subtitle: 'Profile, preferences, and workspace defaults',
     },
+    '/app/help': {
+      title: 'User guide',
+      subtitle: 'How to use Inventory, import CSV, sales, and settings',
+    },
     '/app/crm/leads': {
       title: 'Sales',
       subtitle: 'Leads, quotes, and sales pipeline',

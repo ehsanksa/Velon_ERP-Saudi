@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Download, FileUp, Loader2, Sparkles } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { BookOpen, Download, FileUp, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -194,12 +195,50 @@ export function ProductImportDialog({ open, onOpenChange, onImported }: Props) {
 
         {step === 'upload' && (
           <div className="space-y-4">
-            <div className="border-border bg-muted/40 rounded-md border p-4">
+            <div className="border-border bg-muted/40 space-y-3 rounded-md border p-4">
+              <p className="text-sm font-medium">
+                {t('You are not wrong — CSV is not a screenshot of Products or Stock')}
+              </p>
+              <p className="text-muted-foreground text-sm">
+                {t(
+                  'One CSV row creates/updates a catalog item and can also set opening stock. Products tab shows master fields; Stock tab shows warehouse quantities.',
+                )}
+              </p>
+              <ul className="text-muted-foreground list-disc space-y-1 pl-4 text-sm">
+                <li>
+                  {t('Products columns: sku, name, itemType, category, barcode, status, unitPrice')}
+                </li>
+                <li>
+                  {t(
+                    'Stock columns (PRODUCT only): warehouse, quantity, reorderPoint, safetyStock',
+                  )}
+                </li>
+                <li>
+                  {t(
+                    'Not in CSV (use Stock UI later): Ext. value, Mfg/Exp dates, ABC, Scan actions',
+                  )}
+                </li>
+              </ul>
               <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-sm">
                 <li>{t('Download the standard CSV template')}</li>
                 <li>{t('Separate PRODUCT (stock) and SERVICE (no stock) rows')}</li>
                 <li>{t('Validate 3–5 rows first, then import the full file')}</li>
               </ol>
+              <Button
+                asChild
+                type="button"
+                size="sm"
+                variant="link"
+                className="h-auto px-0"
+              >
+                <Link
+                  to="/app/help"
+                  onClick={() => onOpenChange(false)}
+                >
+                  <BookOpen className="mr-2 h-3.5 w-3.5" />
+                  {t('Open full user guide')}
+                </Link>
+              </Button>
             </div>
 
             <div className="flex flex-wrap gap-2">
