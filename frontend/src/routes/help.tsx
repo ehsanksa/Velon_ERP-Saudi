@@ -32,7 +32,7 @@ function HelpPage() {
         <h2 className="text-lg font-semibold">{t('In-app user guide')}</h2>
         <p className="text-muted-foreground mt-2 text-sm">
           {t(
-            'After you sign in, open User guide from the left menu for step-by-step help — including why the Import CSV template differs from Products and Stock layouts.',
+            'After you sign in, open User guide from the left menu for complete how-to coverage of every module in the workspace.',
           )}
         </p>
         <Button

@@ -670,10 +670,16 @@ export const AR: Record<string, string> = {
   Variants: 'المتغيرات',
 
   'User guide': 'دليل المستخدم',
-  'How to use Inventory, import CSV, sales, and settings':
-    'كيف تستخدم المخزون واستيراد CSV والمبيعات والإعدادات',
-  'Short how-to for daily work in Velon. Start with Inventory if you are importing a catalog.':
-    'شرح مختصر للعمل اليومي في Velon. ابدأ بالمخزون إذا كنت تستورد كتالوجاً.',
+  'How to use every module in your workspace': 'كيف تستخدم كل وحدة في مساحة عملك',
+  'Complete how-to for every workspace module — Dashboard, Sales, Invoices, Purchases, Inventory, Customers, Accounting, HR, Reports, and Settings.':
+    'شرح كامل لكل وحدات مساحة العمل — لوحة المعلومات، المبيعات، الفواتير، المشتريات، المخزون، العملاء، المحاسبة، الموارد البشرية، التقارير، والإعدادات.',
+  'Search the user guide…': 'ابحث في دليل المستخدم…',
+  Modules: 'الوحدات',
+  'Open this feature': 'افتح هذه الميزة',
+  'How to use': 'طريقة الاستخدام',
+  Tips: 'نصائح',
+  'Watch out': 'تنبيه',
+  'No guide topics match your search in this module.': 'لا توجد مواضيع تطابق بحثك في هذه الوحدة.',
   'Open Products': 'فتح المنتجات',
   'Open Stock': 'فتح المخزون',
   'Why CSV looks different from Inventory screens': 'لماذا يختلف ملف CSV عن شاشات المخزون',
@@ -682,10 +688,6 @@ export const AR: Record<string, string> = {
   'CSV column': 'عمود CSV',
   'Products tab': 'تبويب المنتجات',
   'Stock tab': 'تبويب المخزون',
-  '— (opening only)': '— (افتتاحي فقط)',
-  'Scan-related': 'مرتبط بالمسح',
-  'Stock-only UI fields such as Ext. value, Mfg date, Exp date, and ABC are managed on the Stock screen (or calculated), not in the import template.':
-    'حقول شاشة المخزون فقط مثل القيمة الإجمالية وتاريخ التصنيع والانتهاء وABC تُدار في شاشة المخزون (أو تُحسب)، وليست في قالب الاستيراد.',
   Import: 'استيراد',
   'Quick map': 'خريطة سريعة',
   'You are not wrong — CSV is not a screenshot of Products or Stock':
@@ -700,8 +702,8 @@ export const AR: Record<string, string> = {
     'ليست في CSV (استخدم شاشة المخزون لاحقاً): القيمة الإجمالية، تواريخ التصنيع/الانتهاء، ABC، إجراءات المسح',
   'Open full user guide': 'فتح دليل المستخدم كاملاً',
   'In-app user guide': 'دليل المستخدم داخل التطبيق',
-  'After you sign in, open User guide from the left menu for step-by-step help — including why the Import CSV template differs from Products and Stock layouts.':
-    'بعد تسجيل الدخول، افتح «دليل المستخدم» من القائمة اليسرى لشرح خطوة بخطوة — بما في ذلك لماذا يختلف قالب CSV عن تخطيط المنتجات والمخزون.',
+  'After you sign in, open User guide from the left menu for complete how-to coverage of every module in the workspace.':
+    'بعد تسجيل الدخول، افتح «دليل المستخدم» من القائمة اليسرى لشرح كامل لكل وحدات مساحة العمل.',
   'Open workspace user guide': 'فتح دليل مساحة العمل',
 
   'Products tab vs Stock tab': 'تبويب المنتجات مقابل تبويب المخزون',

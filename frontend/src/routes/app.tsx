@@ -97,7 +97,7 @@ function AppLayout() {
     },
     '/app/help': {
       title: 'User guide',
-      subtitle: 'How to use Inventory, import CSV, sales, and settings',
+      subtitle: 'How to use every module in your workspace',
     },
     '/app/crm/leads': {
       title: 'Sales',
