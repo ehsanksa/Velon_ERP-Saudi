@@ -22,6 +22,7 @@ import {
   resolveLineVat,
   resolvePaymentStatus,
   shouldDeductStock,
+  standardVatRateOn,
 } from '@velon/shared';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -60,6 +61,7 @@ type ResolvedLine = {
   lineSubtotal: number;
   lineTotal: number;
   position: number;
+  tracksStock: boolean;
 };
 
 @Injectable()
@@ -182,6 +184,9 @@ export class InvoiceService {
             uom: product.uom,
             availableQty: available,
             hasVariants: true,
+            itemType: product.itemType,
+            taxTreatment: 'STANDARD' as const,
+            taxRate: standardVatRateOn(new Date()) ?? 0,
           };
         });
       }
@@ -200,6 +205,9 @@ export class InvoiceService {
           uom: product.uom,
           availableQty: available,
           hasVariants: false,
+          itemType: product.itemType,
+          taxTreatment: 'STANDARD' as const,
+          taxRate: standardVatRateOn(new Date()) ?? 0,
         },
       ];
     });
@@ -340,6 +348,7 @@ export class InvoiceService {
       let uom = line.uom;
       let unitPrice = line.unitPrice;
       let stockId: string | undefined;
+      let tracksStock = false;
 
       if (lineType === SalesInvoiceLineType.PRODUCT) {
         if (!line.productId) throw new BadRequestException('Product lines require productId.');
@@ -350,6 +359,7 @@ export class InvoiceService {
           },
         });
         if (!product) throw new NotFoundException('Product not found.');
+        tracksStock = product.itemType !== 'SERVICE';
 
         const variant = line.variantId
           ? await this.prisma.client.inventoryProductVariant.findFirst({
@@ -406,6 +416,7 @@ export class InvoiceService {
         lineSubtotal: vat.lineSubtotal,
         lineTotal: vat.lineTotal,
         position: position++,
+        tracksStock,
       });
     }
 
@@ -419,8 +430,8 @@ export class InvoiceService {
   ) {
     const movements = new Map<number, Prisma.InputJsonValue>();
     for (const line of lines) {
-      if (line.lineType !== SalesInvoiceLineType.PRODUCT || !line.stockId) continue;
-      const qty = Math.ceil(line.quantity);
+      if (!line.tracksStock || !line.stockId) continue;
+      const qty = Math.max(0, Math.round(line.quantity));
       if (qty <= 0) continue;
       const { allocations } = await this.batches.allocateAndDeduct(tenantId, line.stockId, qty, tx);
       movements.set(line.position, {
@@ -565,6 +576,14 @@ export class InvoiceService {
     const year = issueDate.getFullYear();
     const invoiceNumber = await this.invoices.nextInvoiceNumber(year);
     const deductStock = shouldDeductStock(status);
+    if (deductStock) {
+      const missing = resolvedLines.filter((line) => line.tracksStock && !line.stockId);
+      if (missing.length > 0) {
+        throw new BadRequestException(
+          `No stock is recorded for ${missing.map((line) => line.itemName).join(', ')} in the selected warehouse.`,
+        );
+      }
+    }
     const profile = await this.prisma.client.companyProfile.findUnique({ where: { tenantId } });
     const sellerName = profile?.legalNameAr?.trim() || profile?.legalName?.trim() || '';
     const vatNumber = profile?.vatRegistrationNumber?.trim() || profile?.taxId?.trim() || '';
@@ -927,14 +946,25 @@ export class InvoiceService {
         include: { workspace: true },
       }),
     ]);
+    const nationalAddress = [
+      [profile?.buildingNumber, profile?.streetName].filter(Boolean).join(' '),
+      profile?.district,
+      profile?.city,
+      profile?.postalCode,
+      profile?.additionalNumber ? `Additional ${profile.additionalNumber}` : null,
+      profile?.region,
+    ]
+      .filter((part) => part && part.trim())
+      .join(', ');
     return {
       name: profile?.legalName ?? tenant?.name ?? 'Company',
       legalName: profile?.legalName,
       email: profile?.email,
       phone: profile?.phone,
-      address: profile?.address,
+      address: nationalAddress || profile?.address,
       website: profile?.website,
-      taxId: profile?.taxId,
+      taxId: profile?.vatRegistrationNumber?.trim() || profile?.taxId,
+      commercialRegistrationNumber: profile?.commercialRegistrationNumber,
       logoDataUrl: profile?.logoDataUrl,
       currency: tenant?.workspace?.currency ?? 'SAR',
     };

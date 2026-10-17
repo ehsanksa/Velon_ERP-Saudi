@@ -57,6 +57,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     savePricingPreference({ ...current, language: next });
     markLanguageConfirmed();
     setLocaleState(next);
+    applyPricingLanguage(next);
   }, []);
 
   const t = useCallback(

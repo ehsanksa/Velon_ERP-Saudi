@@ -8,7 +8,7 @@ export class ApiResponseInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request | undefined>();
     const path = req?.path ?? req?.url ?? '';
-    if (path.includes('/health')) {
+    if (path.includes('/health') || path.includes('/pdf')) {
       return next.handle();
     }
 

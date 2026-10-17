@@ -594,8 +594,16 @@ export class WorkspaceDataService {
 
     const payables =
       Math.round(openPoRows.reduce((sum, po) => sum + Number(po.total), 0) * 100) / 100;
-    const expensesMtd = Math.round(payables * 0.15 * 100) / 100;
-    const pos = this.reportsService.summarizePosSales(posRows, expensesMtd);
+    const expensesMtd = 0;
+    const issuedInvoices = await this.reportsService.issuedInvoicesInPeriod(
+      tenantId,
+      period,
+      query?.warehouseId,
+    );
+    const pos = this.reportsService.mergeIssuedInvoices(
+      this.reportsService.summarizePosSales(posRows, expensesMtd),
+      issuedInvoices,
+    );
     const inventoryValue = stocks.reduce((sum, row) => {
       const available = row.quantity - row.reservedQty;
       const cost = row.variant ? Number(row.variant.costPrice) : Number(row.product.costPrice ?? 0);
@@ -725,12 +733,14 @@ export class WorkspaceDataService {
 
     const ctx = await this.workspaceContext.resolve(user);
     const period = this.reportsService.resolvePeriod(ctx.workspace.timezone, query);
-    const posRows = await this.reportsService.posSalesInPeriod(
-      ctx.tenantId,
-      period,
-      query?.warehouseId,
+    const [posRows, issuedInvoices] = await Promise.all([
+      this.reportsService.posSalesInPeriod(ctx.tenantId, period, query?.warehouseId),
+      this.reportsService.issuedInvoicesInPeriod(ctx.tenantId, period, query?.warehouseId),
+    ]);
+    const pos = this.reportsService.mergeIssuedInvoices(
+      this.reportsService.summarizePosSales(posRows, expensesMtd),
+      issuedInvoices,
     );
-    const pos = this.reportsService.summarizePosSales(posRows, expensesMtd);
 
     return {
       period: accounting.period,
@@ -909,13 +919,24 @@ export class WorkspaceDataService {
       where: { tenantId: ctx.tenantId },
       include: {
         product: true,
+        variant: true,
         warehouse: true,
         batches: { where: { quantity: { gt: 0 } }, orderBy: { expiryDate: 'asc' } },
       },
       orderBy: { updatedAt: 'desc' },
     });
 
-    return stocks.map((row) => {
+    const stockedProductIds = [...new Set(stocks.map((row) => row.productId))];
+    const unstocked = await this.prisma.client.inventoryProduct.findMany({
+      where: {
+        tenantId: ctx.tenantId,
+        itemType: 'PRODUCT',
+        ...(stockedProductIds.length ? { id: { notIn: stockedProductIds } } : {}),
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const stockRows = stocks.map((row) => {
       const available = row.quantity - row.reservedQty;
       const stockLevel =
         available <= row.minStock ? 'critical' : available <= row.reorderLevel ? 'low' : 'healthy';
@@ -931,8 +952,8 @@ export class WorkspaceDataService {
 
       return {
         id: row.id,
-        sku: row.product.sku,
-        name: row.product.name,
+        sku: row.variant?.sku ?? row.product.sku,
+        name: row.variant ? `${row.product.name} — ${row.variant.label}` : row.product.name,
         site: row.warehouse.name,
         quantity: available,
         stockLevel,
@@ -941,14 +962,34 @@ export class WorkspaceDataService {
         abcClass: row.product.abcClass,
         velocity: row.product.velocity.toLowerCase(),
         batchTracked: row.product.batchTracked,
-        variantParent: row.product.variantParent ?? undefined,
-        unitPrice: Number(row.product.unitPrice),
+        variantParent: row.variant ? row.product.name : (row.product.variantParent ?? undefined),
+        unitPrice: Number(row.variant?.unitPrice ?? row.product.unitPrice),
         mfgDate: batches[0]?.mfgDate,
         expiryDate: nearestExpiry,
         expiryStatus,
         batches,
       };
     });
+
+    const catalogRows = unstocked.map((product) => ({
+      id: product.id,
+      sku: product.sku,
+      name: product.name,
+      site: '',
+      quantity: 0,
+      stockLevel: 'healthy' as const,
+      safetyStock: 0,
+      reorderPoint: 0,
+      abcClass: product.abcClass,
+      velocity: product.velocity.toLowerCase(),
+      batchTracked: product.batchTracked,
+      variantParent: product.variantParent ?? undefined,
+      unitPrice: Number(product.unitPrice),
+      expiryStatus: 'no_expiry' as const,
+      batches: [],
+    }));
+
+    return [...stockRows, ...catalogRows];
   }
 
   async posBootstrap(user: Parameters<WorkspaceContextService['resolve']>[0]) {

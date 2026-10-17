@@ -71,7 +71,7 @@ export function BusinessLocalizationFields({
     }
     return countryOptions.map((row): { value: string; label: string } => {
       if (row.value === 'OTHER') return { value: row.value, label: t(row.label) };
-      let label = row.label;
+      let label: string = row.label;
       try {
         label = names?.of(row.value) || row.label;
       } catch {

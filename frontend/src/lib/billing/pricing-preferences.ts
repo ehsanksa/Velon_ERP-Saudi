@@ -2,7 +2,6 @@ import { isSaudiBilling, type PlanRegionalPrices } from '@velon/shared';
 import { emitLocaleChange } from '@/lib/i18n/events';
 import {
   countryOptions,
-  currencyLocale,
   currencyOptions,
   getCountryDefaultCurrency,
   getSarPerUnit,
@@ -65,18 +64,23 @@ export function markLanguageConfirmed() {
   window.localStorage.setItem(PRICING_PROMPT_DISMISSED_KEY, 'true');
 }
 
-export function formatMarketingMonthlyPrice(amount: number, currency: PricingCurrency) {
-  const rounded = Math.round(amount * 100) / 100;
-
-  const locale = currencyLocale[currency] ?? 'en-US';
+export function formatMarketingMonthlyPrice(
+  amount: number,
+  currency: PricingCurrency,
+  language: PricingLanguage,
+) {
+  const rounded = Math.max(Math.round(amount * 100) / 100, 0);
+  const arabic = language === 'ar';
   try {
-    return new Intl.NumberFormat(locale, {
+    return new Intl.NumberFormat(arabic ? 'ar-SA' : 'en-SA', {
       style: 'currency',
       currency,
+      currencyDisplay: arabic ? 'symbol' : 'code',
+      numberingSystem: arabic ? 'arab' : 'latn',
       maximumFractionDigits: 0,
-    }).format(Math.max(rounded, 0));
+    }).format(rounded);
   } catch {
-    return `${currency} ${Math.max(rounded, 0)}`;
+    return `${currency} ${rounded}`;
   }
 }
 
@@ -163,7 +167,7 @@ export function formatPlanPriceForPreference(
     preference,
     interval,
   );
-  return formatMarketingMonthlyPrice(amount, currency);
+  return formatMarketingMonthlyPrice(amount, currency, preference.language);
 }
 
 export function formatPlanEffectiveMonthly(
@@ -176,7 +180,7 @@ export function formatPlanEffectiveMonthly(
     preference,
     'YEARLY',
   );
-  return formatMarketingMonthlyPrice(monthlyEquivalent, currency);
+  return formatMarketingMonthlyPrice(monthlyEquivalent, currency, preference.language);
 }
 
 function isValidLanguage(value: unknown): value is PricingLanguage {

@@ -133,7 +133,12 @@ export function MarketingPricingSection({
             </p>
 
             <div className="mt-4 flex items-baseline gap-1">
-              <span className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              <span
+                dir={preference.language === 'ar' ? 'rtl' : 'ltr'}
+                className={`text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl ${
+                  preference.language === 'ar' ? 'digits-arab' : 'digits-latn'
+                }`}
+              >
                 {formatPlanPriceForPreference(plan, preference, interval)}
               </span>
               <span
@@ -146,7 +151,10 @@ export function MarketingPricingSection({
             <div className="mt-1 min-h-4">
               {interval === 'YEARLY' ? (
                 <p
-                  className={`text-xs ${plan.featured ? 'text-background/65' : 'text-muted-foreground'}`}
+                  dir={preference.language === 'ar' ? 'rtl' : 'ltr'}
+                  className={`text-xs tabular-nums ${
+                    preference.language === 'ar' ? 'digits-arab' : 'digits-latn'
+                  } ${plan.featured ? 'text-background/65' : 'text-muted-foreground'}`}
                 >
                   {formatPlanEffectiveMonthly(plan, preference)}
                   {t('/mo billed annually')}

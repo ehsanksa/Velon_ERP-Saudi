@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useWorkspaceCurrency } from '@/contexts/workspace-currency';
 import { getSessionMembershipRole } from '@/lib/auth/session';
 import { loadCrmCustomers } from '@/lib/crm/api';
+import { useT } from '@/lib/i18n/locale-context';
 import {
   createInvoice,
   loadInvoiceBootstrap,
@@ -62,6 +63,7 @@ function newLine(partial?: Partial<FormLine>): FormLine {
 
 export function InvoiceForm() {
   const navigate = useNavigate();
+  const t = useT();
   const { formatCurrency } = useWorkspaceCurrency();
   const canWrite = canWriteSales(normalizeVelonRole(getSessionMembershipRole() ?? 'USER'));
   const submittingRef = useRef(false);
@@ -224,6 +226,8 @@ export function InvoiceForm() {
         uom: product.uom,
         unitPrice: product.unitPrice,
         quantity: 1,
+        taxTreatment: product.taxTreatment || 'STANDARD',
+        taxRate: product.taxRate ?? 0,
       }),
     ]);
   };
@@ -253,23 +257,23 @@ export function InvoiceForm() {
 
   const submit = async (action: CreateInvoiceInput['action']) => {
     if (!canWrite) {
-      toast.error('You do not have permission to create invoices.');
+      toast.error(t('You do not have permission to create invoices.'));
       return;
     }
     if (!customerName.trim()) {
-      toast.error('Customer name is required.');
+      toast.error(t('Customer name is required.'));
       return;
     }
     if (!warehouseId && lines.some((line) => line.lineType !== 'CUSTOM' && line.productId)) {
-      toast.error('Select a warehouse before adding inventory products.');
+      toast.error(t('Select a warehouse before adding inventory products.'));
       return;
     }
     if (lines.every((line) => !line.itemName.trim())) {
-      toast.error('Add at least one line item.');
+      toast.error(t('Add at least one line item.'));
       return;
     }
     if (action !== 'draft' && lines.some((line) => line.itemName.trim() && !line.taxTreatment)) {
-      toast.error('Select a VAT treatment for every line.');
+      toast.error(t('Select a VAT treatment for every line.'));
       return;
     }
     if (submittingRef.current) return;
@@ -277,17 +281,17 @@ export function InvoiceForm() {
     setBusy(true);
     try {
       const invoice = await createInvoice(buildPayload(action));
-      toast.success(`Invoice ${invoice.invoiceNumber} saved`);
+      toast.success(t('Invoice {number} saved', { number: invoice.invoiceNumber }));
       if (action === 'save_print') {
         try {
           await openInvoicePdf(invoice.id);
         } catch (pdfErr) {
-          toast.error(pdfErr instanceof Error ? pdfErr.message : 'Could not open invoice PDF');
+          toast.error(pdfErr instanceof Error ? pdfErr.message : t('Could not open invoice PDF'));
         }
       }
       await navigate({ to: '/app/invoices/$invoiceId', params: { invoiceId: invoice.id } });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save invoice');
+      toast.error(err instanceof Error ? err.message : t('Could not save invoice'));
     } finally {
       submittingRef.current = false;
       setBusy(false);
@@ -298,7 +302,7 @@ export function InvoiceForm() {
     <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
       <div className="space-y-6">
         <Card className="p-5">
-          <h2 className="mb-4 text-lg font-semibold">Customer details</h2>
+          <h2 className="mb-4 text-lg font-semibold">{t('Customer details')}</h2>
           <div className="mb-4 flex gap-2">
             <Button
               type="button"
@@ -306,7 +310,7 @@ export function InvoiceForm() {
               size="sm"
               onClick={() => setCustomerMode('existing')}
             >
-              Existing customer
+              {t('Existing customer')}
             </Button>
             <Button
               type="button"
@@ -317,7 +321,7 @@ export function InvoiceForm() {
                 setCustomerId('');
               }}
             >
-              New customer
+              {t('New customer')}
             </Button>
           </div>
           {customerMode === 'existing' ? (
@@ -482,7 +486,7 @@ export function InvoiceForm() {
 
         <Card className="p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Products</h2>
+            <h2 className="text-lg font-semibold">{t('Products')}</h2>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -490,20 +494,20 @@ export function InvoiceForm() {
                 size="sm"
                 onClick={() => setLines((prev) => [...prev, newLine({ lineType: 'CUSTOM' })])}
               >
-                Add custom item
+                {t('Add custom item')}
               </Button>
             </div>
           </div>
 
           <div className="mb-4">
-            <Label>Search products</Label>
+            <Label>{t('Search products')}</Label>
             <div className="relative">
               <Search className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
               <Input
                 className="pl-9"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Name, SKU, barcode, or variant"
+                placeholder={t('Name, SKU, barcode, or variant')}
                 disabled={!warehouseId}
               />
             </div>
@@ -666,7 +670,7 @@ export function InvoiceForm() {
                     />
                   </div>
                   <div>
-                    <Label>VAT treatment</Label>
+                    <Label>{t('VAT treatment')}</Label>
                     <Select
                       value={line.taxTreatment || undefined}
                       onValueChange={(value) =>

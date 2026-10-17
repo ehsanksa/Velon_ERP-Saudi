@@ -70,6 +70,28 @@ export class WorkspaceReportsService {
     }
   }
 
+  async issuedInvoicesInPeriod(
+    tenantId: string,
+    period: ResolvedReportPeriod,
+    warehouseId?: string,
+  ) {
+    return this.prisma.client.salesInvoice.findMany({
+      where: {
+        tenantId,
+        status: { in: ['UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE'] },
+        issueDate: {
+          gte: new Date(`${period.startDate}T00:00:00.000Z`),
+          lte: new Date(`${period.endDate}T00:00:00.000Z`),
+        },
+        ...(warehouseId ? { warehouseId } : {}),
+      },
+      include: {
+        items: { include: { product: true, variant: true } },
+      },
+      orderBy: { issueDate: 'desc' },
+    });
+  }
+
   async posSalesInPeriod(tenantId: string, period: ResolvedReportPeriod, warehouseId?: string) {
     const rows = await this.prisma.client.auditLog.findMany({
       where: {
@@ -200,40 +222,234 @@ export class WorkspaceReportsService {
     const grossProfit = Math.round((netSales - cogs) * 100) / 100;
     const netProfit = Math.round((grossProfit - expenses) * 100) / 100;
 
+    return this.packSalesSummary({
+      grossSales,
+      discounts,
+      returns,
+      netSales,
+      cogs,
+      grossProfit,
+      expenses,
+      netProfit,
+      taxTotal,
+      ticketCount: invoices.length,
+      paidTotal,
+      dueTotal,
+      invoices,
+      productMap,
+      customerMap,
+      dailyMap,
+    });
+  }
+
+  /**
+   * Adds issued sales invoices (not drafts, voids, or cancellations) onto a POS summary.
+   * Invoice totals are the recorded sale; payments and balances come from the invoice row.
+   */
+  mergeIssuedInvoices(
+    summary: ReturnType<WorkspaceReportsService['summarizePosSales']>,
+    invoices: Array<{
+      id: string;
+      invoiceNumber: string;
+      customerName: string;
+      status: string;
+      issueDate: Date;
+      subtotal: unknown;
+      discount: unknown;
+      taxAmount: unknown;
+      total: unknown;
+      amountPaid: unknown;
+      balanceDue: unknown;
+      paymentMethod?: string | null;
+      items: Array<{
+        itemName: string;
+        quantity: unknown;
+        unitPrice: unknown;
+        discount: unknown;
+        lineSubtotal: unknown;
+        product?: { costPrice: unknown } | null;
+        variant?: { costPrice: unknown } | null;
+      }>;
+    }>,
+  ): ReturnType<WorkspaceReportsService['summarizePosSales']> {
+    let grossSales = summary.grossSales;
+    let discounts = summary.discounts;
+    let cogs = summary.cogs;
+    let taxTotal = summary.taxTotal;
+    let paidTotal = summary.paidTotal;
+    let dueTotal = summary.dueTotal;
+    const productMap = new Map(summary.productSales.map((row) => [row.name, { ...row }]));
+    const customerMap = new Map(summary.customerSales.map((row) => [row.customer, row.revenue]));
+    const dailyMap = new Map(
+      summary.dailyTrend.map((row) => [
+        row.period,
+        { revenue: row.revenue, netSales: row.netSales },
+      ]),
+    );
+    const paymentMap = new Map(summary.paymentMethods.map((row) => [row.method, row.amount]));
+    const mergedInvoices = [...summary.invoices];
+
+    for (const invoice of invoices) {
+      const subtotal = Number(invoice.subtotal);
+      const headerDiscount = Number(invoice.discount);
+      const lineDiscount = invoice.items.reduce((sum, item) => sum + Number(item.discount), 0);
+      const tax = Number(invoice.taxAmount);
+      const total = Number(invoice.total);
+      const paid = Number(invoice.amountPaid);
+      const due = Number(invoice.balanceDue);
+      let ticketCogs = 0;
+
+      for (const item of invoice.items) {
+        const qty = Number(item.quantity);
+        const costPrice = item.variant
+          ? Number(item.variant.costPrice)
+          : Number(item.product?.costPrice ?? 0);
+        const cost = costPrice * qty;
+        ticketCogs += cost;
+        const current = productMap.get(item.itemName) ?? {
+          name: item.itemName,
+          qty: 0,
+          revenue: 0,
+          cogs: 0,
+        };
+        current.qty += qty;
+        current.revenue += Number(item.lineSubtotal);
+        current.cogs += cost;
+        productMap.set(item.itemName, current);
+      }
+
+      grossSales += subtotal + headerDiscount + lineDiscount;
+      discounts += headerDiscount + lineDiscount;
+      cogs += ticketCogs;
+      taxTotal += tax;
+      paidTotal += paid;
+      dueTotal += due;
+
+      const customer = invoice.customerName || 'Customer';
+      customerMap.set(customer, (customerMap.get(customer) ?? 0) + total);
+      const day = invoice.issueDate.toISOString().slice(0, 10);
+      const dayCur = dailyMap.get(day) ?? { revenue: 0, netSales: 0 };
+      dayCur.revenue += total;
+      dayCur.netSales += total;
+      dailyMap.set(day, dayCur);
+
+      const method = invoice.paymentMethod?.replace(/_/g, ' ') || 'Invoice';
+      paymentMap.set(method, (paymentMap.get(method) ?? 0) + paid);
+
+      const paidStatus = invoice.status === 'PAID';
+      mergedInvoices.push({
+        id: invoice.invoiceNumber || invoice.id,
+        customer,
+        amount: Math.round(total * 100) / 100,
+        status: paidStatus ? 'paid' : due > 0 ? 'due' : 'paid',
+        date: day,
+        at: invoice.issueDate.toISOString(),
+        lineCount: invoice.items.length,
+        grossAmount: Math.round((subtotal + headerDiscount + lineDiscount) * 100) / 100,
+        discount: Math.round((headerDiscount + lineDiscount) * 100) / 100,
+        cogs: Math.round(ticketCogs * 100) / 100,
+      });
+    }
+
+    const invoiceGrandTotal = invoices.reduce((sum, invoice) => sum + Number(invoice.total), 0);
+    const invoiceExTax = invoices.reduce((sum, invoice) => sum + Number(invoice.subtotal), 0);
+    const netSales =
+      Math.round(
+        (grossSales - discounts - summary.returns + (invoiceGrandTotal - invoiceExTax)) * 100,
+      ) / 100;
+    const grossProfit = Math.round((netSales - cogs) * 100) / 100;
+    const netProfit = Math.round((grossProfit - summary.expenses) * 100) / 100;
+
     return {
       grossSales: Math.round(grossSales * 100) / 100,
       discounts: Math.round(discounts * 100) / 100,
-      returns: Math.round(returns * 100) / 100,
+      returns: summary.returns,
       netSales,
       cogs: Math.round(cogs * 100) / 100,
       grossProfit,
-      expenses: Math.round(expenses * 100) / 100,
+      expenses: summary.expenses,
       netProfit,
       taxTotal: Math.round(taxTotal * 100) / 100,
-      ticketCount: invoices.length,
+      ticketCount: mergedInvoices.length,
       paidTotal: Math.round(paidTotal * 100) / 100,
       dueTotal: Math.round(dueTotal * 100) / 100,
-      invoices,
-      productSales: [...productMap.entries()].map(([name, v]) => ({
-        name,
-        qty: v.qty,
-        revenue: Math.round(v.revenue * 100) / 100,
-        cogs: Math.round(v.cogs * 100) / 100,
+      invoices: mergedInvoices,
+      productSales: [...productMap.values()].map((row) => ({
+        name: row.name,
+        qty: row.qty,
+        revenue: Math.round(row.revenue * 100) / 100,
+        cogs: Math.round(row.cogs * 100) / 100,
       })),
       customerSales: [...customerMap.entries()].map(([customer, revenue]) => ({
         customer,
         revenue: Math.round(revenue * 100) / 100,
       })),
-      paymentMethods: [
-        { method: 'Cash / Paid', amount: Math.round(paidTotal * 100) / 100 },
-        { method: 'Due / Credit', amount: Math.round(dueTotal * 100) / 100 },
-      ].filter((p) => p.amount > 0),
+      paymentMethods: [...paymentMap.entries()]
+        .map(([method, amount]) => ({ method, amount: Math.round(amount * 100) / 100 }))
+        .filter((row) => row.amount > 0),
       dailyTrend: [...dailyMap.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([period, v]) => ({
+        .map(([period, value]) => ({
           period,
-          revenue: Math.round(v.revenue * 100) / 100,
-          netSales: Math.round(v.netSales * 100) / 100,
+          revenue: Math.round(value.revenue * 100) / 100,
+          netSales: Math.round(value.netSales * 100) / 100,
+        })),
+    };
+  }
+
+  private packSalesSummary(input: {
+    grossSales: number;
+    discounts: number;
+    returns: number;
+    netSales: number;
+    cogs: number;
+    grossProfit: number;
+    expenses: number;
+    netProfit: number;
+    taxTotal: number;
+    ticketCount: number;
+    paidTotal: number;
+    dueTotal: number;
+    invoices: ReturnType<WorkspaceReportsService['summarizePosSales']>['invoices'];
+    productMap: Map<string, { qty: number; revenue: number; cogs: number }>;
+    customerMap: Map<string, number>;
+    dailyMap: Map<string, { revenue: number; netSales: number }>;
+  }) {
+    const round = (value: number) => Math.round(value * 100) / 100;
+    return {
+      grossSales: round(input.grossSales),
+      discounts: round(input.discounts),
+      returns: round(input.returns),
+      netSales: input.netSales,
+      cogs: round(input.cogs),
+      grossProfit: input.grossProfit,
+      expenses: round(input.expenses),
+      netProfit: input.netProfit,
+      taxTotal: round(input.taxTotal),
+      ticketCount: input.ticketCount,
+      paidTotal: round(input.paidTotal),
+      dueTotal: round(input.dueTotal),
+      invoices: input.invoices,
+      productSales: [...input.productMap.entries()].map(([name, value]) => ({
+        name,
+        qty: value.qty,
+        revenue: round(value.revenue),
+        cogs: round(value.cogs),
+      })),
+      customerSales: [...input.customerMap.entries()].map(([customer, revenue]) => ({
+        customer,
+        revenue: round(revenue),
+      })),
+      paymentMethods: [
+        { method: 'Cash / Paid', amount: round(input.paidTotal) },
+        { method: 'Due / Credit', amount: round(input.dueTotal) },
+      ].filter((row) => row.amount > 0),
+      dailyTrend: [...input.dailyMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([period, value]) => ({
+          period,
+          revenue: round(value.revenue),
+          netSales: round(value.netSales),
         })),
     };
   }

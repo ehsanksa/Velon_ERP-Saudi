@@ -171,6 +171,16 @@ export type SignUpPayload = {
   timezone: string;
   address: string;
   taxId?: string;
+  legalNameAr?: string;
+  commercialRegistrationNumber?: string;
+  vatRegistered?: boolean;
+  buildingNumber?: string;
+  streetName?: string;
+  district?: string;
+  city?: string;
+  postalCode?: string;
+  additionalNumber?: string;
+  region?: string;
   industry: string;
   plan: 'STARTER' | 'GROWTH' | 'ENTERPRISE';
   fullName: string;

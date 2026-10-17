@@ -799,4 +799,79 @@ export const AR: Record<string, string> = {
     'إدارة مساحة العمل (المالك/المديرون) تدير المستخدمين والأدوار.',
   'Inventory write access is required for Import CSV and Create product.':
     'صلاحية كتابة المخزون مطلوبة لاستيراد CSV وإنشاء منتج.',
+
+  'Product master, categories, warehouses, and live stock.':
+    'بيانات المنتجات والتصنيفات والمستودعات والمخزون الفعلي.',
+  Stock: 'المخزون',
+  'On hand': 'الكمية المتوفرة',
+  'Inventory list': 'قائمة المخزون',
+  'Failed to load inventory': 'تعذر تحميل المخزون',
+  'No warehouse': 'بدون مستودع',
+
+  Cashbook: 'دفتر النقدية',
+  'OpEx (MTD)': 'المصروفات التشغيلية (الشهر)',
+  Receivables: 'الذمم المدينة',
+  Payables: 'الذمم الدائنة',
+  'Recognized revenue (MTD)': 'إيراد المبيعات (الشهر)',
+  'Net operating (MTD)': 'صافي التشغيل (الشهر)',
+  'Sourced from issued sales invoices, POS tickets, and open purchase orders.':
+    'محسوب من فواتير المبيعات الصادرة وتذاكر نقطة البيع وأوامر الشراء المفتوحة.',
+
+  'You do not have permission to create invoices.': 'ليست لديك صلاحية إنشاء الفواتير.',
+  'Customer name is required.': 'اسم العميل مطلوب.',
+  'Select a warehouse before adding inventory products.': 'اختر مستودعاً قبل إضافة منتجات المخزون.',
+  'Add at least one line item.': 'أضف بنداً واحداً على الأقل.',
+  'Select a VAT treatment for every line.': 'اختر معالجة ضريبة القيمة المضافة لكل بند.',
+  'Invoice {number} saved': 'تم حفظ الفاتورة {number}',
+  'Could not open invoice PDF': 'تعذر فتح ملف PDF للفاتورة',
+  'Could not save invoice': 'تعذر حفظ الفاتورة',
+  'Customer details': 'بيانات العميل',
+  'Existing customer': 'عميل موجود',
+  'New customer': 'عميل جديد',
+  'Add custom item': 'إضافة بند مخصص',
+  'Search products': 'بحث عن المنتجات',
+  'Name, SKU, barcode, or variant': 'الاسم أو رمز SKU أو الباركود أو المتغير',
+  'VAT treatment': 'معالجة ضريبة القيمة المضافة',
+  'Invoice PDF is not available. The file could not be opened.':
+    'ملف PDF للفاتورة غير متاح. تعذر فتح الملف.',
+
+  'Saudi business details': 'بيانات المنشأة في السعودية',
+  'National address is required. Commercial Registration and VAT are only required when they apply to this business.':
+    'العنوان الوطني مطلوب. السجل التجاري وضريبة القيمة المضافة مطلوبان فقط عندما ينطبقان على المنشأة.',
+  'Arabic registered name (optional)': 'الاسم التجاري بالعربية (اختياري)',
+  'Commercial Registration (optional)': 'السجل التجاري (اختياري)',
+  '10 digits, if the business holds a CR': '10 أرقام، إذا كان للمنشأة سجل تجاري',
+  'This business is registered for VAT': 'هذه المنشأة مسجلة في ضريبة القيمة المضافة',
+  'VAT registration number': 'الرقم الضريبي',
+  '15 digits': '15 رقماً',
+  'National address': 'العنوان الوطني',
+  'Building number (4 digits)': 'رقم المبنى (4 أرقام)',
+  Street: 'الشارع',
+  District: 'الحي',
+  City: 'المدينة',
+  'Postal code (5 digits)': 'الرمز البريدي (5 أرقام)',
+  'Additional number (4 digits)': 'الرقم الإضافي (4 أرقام)',
+  Region: 'المنطقة',
+  'Building number is required for the Saudi national address (4 digits).':
+    'رقم المبنى مطلوب في العنوان الوطني (4 أرقام).',
+  'Street name is required for the Saudi national address.': 'اسم الشارع مطلوب في العنوان الوطني.',
+  'District is required for the Saudi national address.': 'الحي مطلوب في العنوان الوطني.',
+  'City is required for the Saudi national address.': 'المدينة مطلوبة في العنوان الوطني.',
+  'Postal code is required for the Saudi national address (5 digits).':
+    'الرمز البريدي مطلوب في العنوان الوطني (5 أرقام).',
+  'Additional number is required for the Saudi national address (4 digits).':
+    'الرقم الإضافي مطلوب في العنوان الوطني (4 أرقام).',
+  'Region is required for the Saudi national address.': 'المنطقة مطلوبة في العنوان الوطني.',
+  'Select a region of Saudi Arabia.': 'اختر منطقة في المملكة العربية السعودية.',
+  'VAT registration number is required when the business is VAT registered.':
+    'الرقم الضريبي مطلوب عندما تكون المنشأة مسجلة في ضريبة القيمة المضافة.',
+  'Commercial Registration number must be 10 digits when provided.':
+    'رقم السجل التجاري يجب أن يكون 10 أرقام عند إدخاله.',
+  'VAT registration number must be 15 digits when provided.':
+    'الرقم الضريبي يجب أن يكون 15 رقماً عند إدخاله.',
+  'National address building number must be 4 digits when provided.':
+    'رقم المبنى في العنوان الوطني يجب أن يكون 4 أرقام.',
+  'Postal code must be 5 digits when provided.': 'الرمز البريدي يجب أن يكون 5 أرقام.',
+  'National address additional number must be 4 digits when provided.':
+    'الرقم الإضافي في العنوان الوطني يجب أن يكون 4 أرقام.',
 };

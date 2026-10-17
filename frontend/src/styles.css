@@ -172,6 +172,23 @@
   html[dir='rtl'] body {
     letter-spacing: 0;
   }
+
+  /* IBM Plex Sans Arabic swaps 0-9 for Arabic-Indic digits when locl is on. */
+  html[lang='en-SA'] {
+    font-feature-settings: 'locl' 0;
+  }
+
+  html[lang='ar-SA'] {
+    font-feature-settings: 'locl' 1;
+  }
+
+  .digits-latn {
+    font-feature-settings: 'locl' 0;
+  }
+
+  .digits-arab {
+    font-feature-settings: 'locl' 1;
+  }
 }
 
 @utility bg-gradient-primary {

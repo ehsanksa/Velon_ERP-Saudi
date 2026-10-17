@@ -173,9 +173,14 @@ export function formatHijriDate(value: Date | string, timeZone = 'Asia/Riyadh'):
   }).format(date);
 }
 
+/** Digit system follows the interface language, not the workspace’s stored number format. */
+export function numberFormatForLanguage(language: 'ar' | 'en'): string {
+  return language === 'ar' ? 'ar-SA-u-nu-arab' : 'en-SA-u-nu-latn';
+}
+
 export function formatWorkspaceMoney(amount: number, format: WorkspaceMoneyFormat): string {
   const currencyCode = format.currencyCode || 'SAR';
-  const locale = format.numberFormat?.trim() || 'ar-SA';
+  const locale = format.numberFormat?.trim() || 'en-SA-u-nu-latn';
   try {
     return new Intl.NumberFormat(locale, {
       style: 'currency',

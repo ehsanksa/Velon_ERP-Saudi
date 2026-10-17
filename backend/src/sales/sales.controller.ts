@@ -109,7 +109,7 @@ export class SalesController {
   ) {
     const invoice = await this.invoices.getById(user, id);
     const buffer = await this.invoices.getPdfBuffer(user, id);
-    res.setHeader('Content-Disposition', `attachment; filename="${invoice.invoiceNumber}.pdf"`);
+    res.setHeader('Content-Disposition', `inline; filename="${invoice.invoiceNumber}.pdf"`);
     return new StreamableFile(buffer);
   }
 

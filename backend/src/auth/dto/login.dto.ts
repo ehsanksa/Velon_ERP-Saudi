@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from 'class-validator';
 import { IndustryTemplate, TenantPlan } from '@velon/database';
 import { VELON_CONTACT_EMAIL } from '@velon/shared';
 import { IsVelonPassword } from '../validators/is-velon-password.decorator';
@@ -61,6 +69,58 @@ export class SignUpDto {
   @IsOptional()
   @IsString()
   taxId?: string;
+
+  @ApiPropertyOptional({ description: 'Arabic registered name' })
+  @IsOptional()
+  @IsString()
+  legalNameAr?: string;
+
+  @ApiPropertyOptional({
+    description: 'Commercial Registration number, when the business holds one',
+  })
+  @IsOptional()
+  @IsString()
+  commercialRegistrationNumber?: string;
+
+  @ApiPropertyOptional({ description: 'True when the business is registered for VAT' })
+  @IsOptional()
+  @IsBoolean()
+  vatRegistered?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  buildingNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  streetName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  additionalNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  region?: string;
 
   /** @deprecated Use countryCode — kept for backward-compatible clients */
   @ApiPropertyOptional({ description: 'Country display name (optional if countryCode is set)' })

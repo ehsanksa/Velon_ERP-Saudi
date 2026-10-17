@@ -28,4 +28,40 @@ describe('WorkspaceReportsService', () => {
     expect(summary.grossProfit).toBe(50);
     expect(summary.netProfit).toBe(45);
   });
+
+  it('adds issued invoice totals, payments, and cost onto the sales summary', () => {
+    const base = service.summarizePosSales([], 0);
+    const merged = service.mergeIssuedInvoices(base, [
+      {
+        id: 'inv1',
+        invoiceNumber: 'INV-1',
+        customerName: 'Buyer',
+        status: 'PAID',
+        issueDate: new Date('2026-10-17T00:00:00.000Z'),
+        subtotal: 100,
+        discount: 0,
+        taxAmount: 15,
+        total: 115,
+        amountPaid: 115,
+        balanceDue: 0,
+        paymentMethod: 'CASH',
+        items: [
+          {
+            itemName: 'Widget',
+            quantity: 1,
+            unitPrice: 100,
+            discount: 0,
+            lineSubtotal: 100,
+            product: { costPrice: 40 },
+          },
+        ],
+      },
+    ]);
+    expect(merged.netSales).toBe(115);
+    expect(merged.paidTotal).toBe(115);
+    expect(merged.dueTotal).toBe(0);
+    expect(merged.cogs).toBe(40);
+    expect(merged.invoices[0]?.id).toBe('INV-1');
+    expect(merged.productSales[0]).toMatchObject({ name: 'Widget', qty: 1, cogs: 40 });
+  });
 });

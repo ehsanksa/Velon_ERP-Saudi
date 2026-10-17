@@ -25,6 +25,7 @@ export {
   TIMEZONE_OPTIONS,
   defaultDateFormatForCountry,
   defaultNumberFormatForCountry,
+  numberFormatForLanguage,
   defaultTimezoneForCountry,
   formatCurrencyLabel,
   formatHijriDate,
@@ -185,8 +186,11 @@ export { SAUDI_EDITION } from './saudi-edition';
 
 export {
   SAUDI_REGIONS,
+  saudiRegionName,
+  saudiWorkspaceRegistrationErrors,
   validateSaudiCompanyIdentifiers,
   type SaudiCompanyIdentifiers,
+  type SaudiWorkspaceRegistration,
 } from './saudi-address';
 
 export {

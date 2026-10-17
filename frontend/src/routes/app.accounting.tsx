@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useEffect, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { format, parseISO } from 'date-fns';
 import {
@@ -42,6 +43,7 @@ import {
   exportPlCsv,
   exportTrialBalanceCsv,
 } from '@/lib/accounting/export-reports';
+import { useT } from '@/lib/i18n/locale-context';
 import type { ApBillRecord, ApBillStage } from '@/lib/types/workspace-ui';
 import { loadAccountingWorkspace } from '@/lib/workspace/loaders';
 
@@ -81,8 +83,22 @@ const cashChartConfig = {
 type RoleLens = 'controller' | 'ap_clerk' | 'auditor';
 
 function AccountingPage() {
+  const t = useT();
   const { formatCurrency } = useWorkspaceCurrency();
-  const data = Route.useLoaderData();
+  const loaded = Route.useLoaderData();
+  const [data, setData] = useState(loaded);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadAccountingWorkspace()
+      .then((next) => {
+        if (!cancelled) setData(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded]);
   const [roleLens, setRoleLens] = React.useState<RoleLens>('controller');
   const [focusTab, setFocusTab] = React.useState('tower');
   const automationDismiss = useDismissiblePanel('velon-dismiss:app:accounting:automation');
@@ -125,7 +141,7 @@ function AccountingPage() {
         {[
           {
             key: 'cashbook',
-            label: 'Cashbook',
+            label: t('Cashbook'),
             value: formatCurrency(data.kpis.cashbook),
             hint: 'Operating cash — ties to bank rec below',
             tab: 'bank',
@@ -134,7 +150,7 @@ function AccountingPage() {
           },
           {
             key: 'expense',
-            label: 'OpEx (MTD)',
+            label: t('OpEx (MTD)'),
             value: formatCurrency(data.kpis.expensesMtd),
             hint: 'Accrued from journal automation',
             tab: 'ledger',
@@ -143,7 +159,7 @@ function AccountingPage() {
           },
           {
             key: 'ar',
-            label: 'Receivables',
+            label: t('Receivables'),
             value: formatCurrency(data.kpis.receivables),
             hint: 'Open billing workspace exposure',
             tab: 'capital',
@@ -152,7 +168,7 @@ function AccountingPage() {
           },
           {
             key: 'ap',
-            label: 'Payables',
+            label: t('Payables'),
             value: formatCurrency(data.kpis.payables),
             hint: 'Supplier AP snapshot · drill AP kanban',
             tab: 'capital',
@@ -379,7 +395,7 @@ function AccountingPage() {
               </div>
               <div className="space-y-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Recognized revenue (MTD)</span>
+                  <span className="text-muted-foreground">{t('Recognized revenue (MTD)')}</span>
                   <span className="font-semibold tabular-nums">
                     {formatCurrency(data.kpis.recognizedRevenueMtd)}
                   </span>
@@ -397,7 +413,7 @@ function AccountingPage() {
                   </span>
                 </div>
                 <div className="border-border bg-muted/30 text-muted-foreground rounded-xl border p-3 text-xs">
-                  Net operating (MTD):{' '}
+                  {t('Net operating (MTD)')}:{' '}
                   <span
                     className={`text-foreground font-semibold tabular-nums ${
                       (data.kpis.netOperating ?? 0) < 0 ? 'text-destructive' : 'text-success'
@@ -405,7 +421,8 @@ function AccountingPage() {
                   >
                     {formatCurrency(data.kpis.netOperating ?? 0)}
                   </span>
-                  . Sourced from live POS tickets, open purchase orders, and inventory valuation.
+                  .{' '}
+                  {t('Sourced from issued sales invoices, POS tickets, and open purchase orders.')}
                 </div>
                 <Button
                   type="button"

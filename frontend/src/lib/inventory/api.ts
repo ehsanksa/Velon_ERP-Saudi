@@ -24,6 +24,7 @@ export type InventoryProduct = {
   categoryId: string | null;
   hasVariants?: boolean;
   variantCount?: number;
+  onHand?: number | null;
   category?: { id: string; name: string } | null;
   attributes?: ProductVariantAttribute[];
   variants?: ProductVariant[];

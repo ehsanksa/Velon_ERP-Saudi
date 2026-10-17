@@ -23,6 +23,59 @@ export type SaudiCompanyIdentifiers = {
   additionalNumber?: string | null;
 };
 
+export type SaudiWorkspaceRegistration = SaudiCompanyIdentifiers & {
+  vatRegistered?: boolean;
+  streetName?: string | null;
+  district?: string | null;
+  city?: string | null;
+  region?: string | null;
+};
+
+/** Signup rules for a Saudi workspace. CR and VAT stay conditional; the national address does not. */
+export function saudiWorkspaceRegistrationErrors(input: SaudiWorkspaceRegistration): string[] {
+  const errors = validateSaudiCompanyIdentifiers(input);
+  const required: Array<[string | null | undefined, string]> = [
+    [
+      input.buildingNumber,
+      'Building number is required for the Saudi national address (4 digits).',
+    ],
+    [input.streetName, 'Street name is required for the Saudi national address.'],
+    [input.district, 'District is required for the Saudi national address.'],
+    [input.city, 'City is required for the Saudi national address.'],
+    [input.postalCode, 'Postal code is required for the Saudi national address (5 digits).'],
+    [
+      input.additionalNumber,
+      'Additional number is required for the Saudi national address (4 digits).',
+    ],
+    [input.region, 'Region is required for the Saudi national address.'],
+  ];
+  for (const [value, message] of required) {
+    if (!value?.trim()) errors.push(message);
+  }
+  const region = input.region?.trim();
+  if (
+    region &&
+    !SAUDI_REGIONS.some(
+      (row) => row.code === region || row.nameEn === region || row.nameAr === region,
+    )
+  ) {
+    errors.push('Select a region of Saudi Arabia.');
+  }
+  if (input.vatRegistered && !input.vatRegistrationNumber?.trim()) {
+    errors.push('VAT registration number is required when the business is VAT registered.');
+  }
+  return errors;
+}
+
+export function saudiRegionName(region: string | null | undefined): string | null {
+  const value = region?.trim();
+  if (!value) return null;
+  const match = SAUDI_REGIONS.find(
+    (row) => row.code === value || row.nameEn === value || row.nameAr === value,
+  );
+  return match?.nameEn ?? null;
+}
+
 export function validateSaudiCompanyIdentifiers(input: SaudiCompanyIdentifiers): string[] {
   const errors: string[] = [];
   const cr = input.commercialRegistrationNumber?.trim();

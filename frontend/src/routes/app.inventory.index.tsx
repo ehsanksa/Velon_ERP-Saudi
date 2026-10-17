@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import {
   Layers,
@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWorkspaceCurrency } from '@/contexts/workspace-currency';
+import { useT } from '@/lib/i18n/locale-context';
 import type { InventoryRecord } from '@/lib/types/workspace-ui';
 import { loadInventory } from '@/lib/workspace/loaders';
 import { createInventoryItem, updateInventoryItem } from '@/lib/workspace/mutations';
@@ -104,7 +105,7 @@ function suggestedReorderUnits(item: InventoryRecord): number {
 }
 
 function needsReplenishment(item: InventoryRecord): boolean {
-  return item.quantity <= item.reorderPoint;
+  return item.reorderPoint > 0 && item.quantity <= item.reorderPoint;
 }
 
 export const Route = createFileRoute('/app/inventory/')({
@@ -114,8 +115,24 @@ export const Route = createFileRoute('/app/inventory/')({
 
 function InventoryPage() {
   const router = useRouter();
+  const t = useT();
   const { formatCurrency } = useWorkspaceCurrency();
-  const items = Route.useLoaderData();
+  const loaded = Route.useLoaderData();
+  const [items, setItems] = useState<InventoryRecord[]>(loaded);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadInventory()
+      .then((rows) => {
+        if (!cancelled) setItems(rows);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : t('Failed to load inventory'));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded, t]);
   const [listSort, setListSort] = useState<InventoryListSort>('name_asc');
   const [expiryFilter, setExpiryFilter] = useState('all');
 
@@ -563,7 +580,7 @@ function InventoryPage() {
           <Card className="border-border bg-card overflow-hidden p-0">
             <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b p-5">
               <div>
-                <h2 className="text-lg font-semibold">Inventory list</h2>
+                <h2 className="text-lg font-semibold">{t('Inventory list')}</h2>
                 <p className="text-muted-foreground text-xs">
                   Table for ops · Cards on small screens
                 </p>
@@ -660,7 +677,9 @@ function InventoryPage() {
                           </div>
                         ) : null}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{item.site}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {item.site || t('No warehouse')}
+                      </TableCell>
                       <TableCell className="text-right font-semibold tabular-nums">
                         {item.quantity}
                       </TableCell>
@@ -744,7 +763,9 @@ function InventoryPage() {
                   </div>
                   <div className="text-muted-foreground mt-2 font-mono text-[11px]">{item.sku}</div>
                   <div className="mt-1 font-medium">{item.name}</div>
-                  <div className="text-muted-foreground mt-1 text-xs">{item.site}</div>
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    {item.site || t('No warehouse')}
+                  </div>
                   <div className="text-muted-foreground mt-2 text-[11px]">
                     {formatCurrency(item.unitPrice)} each · ext.{' '}
                     {formatCurrency(extensionValue(item))}

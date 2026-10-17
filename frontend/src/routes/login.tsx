@@ -5,6 +5,12 @@ import { toast } from 'sonner';
 import { PLAN_CATALOG, VELON_CONTACT_EMAIL } from '@velon/shared';
 import { AuthPortalShell } from '@/components/auth/auth-portal-shell';
 import { PasswordRequirementsChecklist } from '@/components/auth/password-requirements-checklist';
+import {
+  emptySaudiBusiness,
+  saudiBusinessErrors,
+  SaudiBusinessFields,
+  type SaudiBusinessValue,
+} from '@/components/auth/saudi-business-fields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -100,6 +106,10 @@ function WorkspaceLoginPage() {
   const [localization, setLocalization] = useState<BusinessLocalizationValue>(() =>
     createDefaultLocalization('SA'),
   );
+  const [saudiBusiness, setSaudiBusiness] = useState<SaudiBusinessValue>(() =>
+    emptySaudiBusiness(),
+  );
+  const isSaudi = localization.countryCode === 'SA';
   const [industry, setIndustry] = useState<string>(INDUSTRY_OPTIONS[0].value);
   const [plan, setPlan] = useState<SignupPlanId>(search.plan ?? 'STARTER');
   const [fullName, setFullName] = useState('');
@@ -196,8 +206,31 @@ function WorkspaceLoginPage() {
         countryCode: localization.countryCode,
         currency: localization.currency,
         timezone: localization.timezone,
-        address: localization.address?.trim() ?? '',
-        taxId: localization.taxId?.trim() || undefined,
+        address: isSaudi
+          ? [
+              saudiBusiness.buildingNumber,
+              saudiBusiness.streetName,
+              saudiBusiness.district,
+              saudiBusiness.city,
+            ].join(', ')
+          : (localization.address?.trim() ?? ''),
+        taxId: isSaudi
+          ? saudiBusiness.vatRegistered
+            ? saudiBusiness.vatRegistrationNumber
+            : undefined
+          : localization.taxId?.trim() || undefined,
+        legalNameAr: isSaudi ? saudiBusiness.legalNameAr.trim() || undefined : undefined,
+        commercialRegistrationNumber: isSaudi
+          ? saudiBusiness.commercialRegistrationNumber || undefined
+          : undefined,
+        vatRegistered: isSaudi ? saudiBusiness.vatRegistered : undefined,
+        buildingNumber: isSaudi ? saudiBusiness.buildingNumber : undefined,
+        streetName: isSaudi ? saudiBusiness.streetName : undefined,
+        district: isSaudi ? saudiBusiness.district : undefined,
+        city: isSaudi ? saudiBusiness.city : undefined,
+        postalCode: isSaudi ? saudiBusiness.postalCode : undefined,
+        additionalNumber: isSaudi ? saudiBusiness.additionalNumber : undefined,
+        region: isSaudi ? saudiBusiness.region : undefined,
         industry,
         plan,
         fullName,
@@ -225,6 +258,16 @@ function WorkspaceLoginPage() {
     }
     if (!localization.countryCode || !localization.currency) {
       toast.error(t('Country and currency are required.'));
+      return;
+    }
+    if (isSaudi) {
+      const errors = saudiBusinessErrors(saudiBusiness);
+      if (errors.length > 0) {
+        toast.error(t(errors[0]));
+        return;
+      }
+    } else if (!localization.address?.trim()) {
+      toast.error(t('Business address is required.'));
       return;
     }
     if (!localization.address?.trim()) {
@@ -411,11 +454,17 @@ function WorkspaceLoginPage() {
               <BusinessLocalizationFields
                 value={localization}
                 onChange={setLocalization}
-                showAddress
-                showTaxId
+                showAddress={!isSaudi}
+                showTaxId={!isSaudi}
                 showFormats={false}
                 idPrefix="signup"
               />
+              {isSaudi ? (
+                <SaudiBusinessFields
+                  value={saudiBusiness}
+                  onChange={setSaudiBusiness}
+                />
+              ) : null}
               <div className="space-y-1.5">
                 <Label htmlFor="signup-plan">{t('Plan')}</Label>
                 <Select

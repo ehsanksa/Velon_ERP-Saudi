@@ -117,6 +117,9 @@ export type InvoiceProductOption = {
   uom: string;
   availableQty: number;
   hasVariants: boolean;
+  itemType?: 'PRODUCT' | 'SERVICE';
+  taxTreatment?: string;
+  taxRate?: number;
 };
 
 export type InvoiceLineInput = {
@@ -245,12 +248,27 @@ export async function downloadInvoicePdf(id: string) {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Failed to download invoice PDF');
+  if (!res.ok) {
+    let message = 'Failed to download invoice PDF';
+    try {
+      const body = (await res.json()) as { message?: string | string[] };
+      if (typeof body.message === 'string') message = body.message;
+      else if (Array.isArray(body.message)) message = body.message.join(', ');
+    } catch {
+      /* keep the default message */
+    }
+    throw new Error(message);
+  }
   const contentType = res.headers.get('content-type') ?? '';
   if (!contentType.includes('application/pdf')) {
-    throw new Error('Invoice PDF is not available');
+    throw new Error('Invoice PDF is not available. The file could not be opened.');
   }
-  return res.blob();
+  const blob = await res.blob();
+  const header = new TextDecoder().decode(await blob.slice(0, 5).arrayBuffer());
+  if (!header.startsWith('%PDF')) {
+    throw new Error('Invoice PDF is not available. The file could not be opened.');
+  }
+  return blob;
 }
 
 export async function openInvoicePdf(

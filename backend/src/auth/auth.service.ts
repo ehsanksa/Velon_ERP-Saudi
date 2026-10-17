@@ -20,6 +20,8 @@ import {
   isPlatformRole,
   JwtPayload,
   normalizeVelonRole,
+  saudiRegionName,
+  saudiWorkspaceRegistrationErrors,
   VelonRole,
 } from '@velon/shared';
 import { verifySignupVerificationToken } from '@velon/shared/signup-verification';
@@ -330,8 +332,52 @@ export class AuthService {
     const countryCode = dto.countryCode.trim().toUpperCase();
     const currency = dto.currency.trim().toUpperCase();
     const timezone = dto.timezone.trim();
-    const address = dto.address.trim();
-    const taxId = dto.taxId?.trim() || null;
+    let address = dto.address.trim();
+    let taxId = dto.taxId?.trim() || null;
+    let commercialRegistrationNumber: string | null = null;
+    let vatRegistrationNumber: string | null = null;
+    let legalNameAr: string | null = dto.legalNameAr?.trim() || null;
+    let buildingNumber: string | null = null;
+    let streetName: string | null = null;
+    let district: string | null = null;
+    let city: string | null = null;
+    let postalCode: string | null = null;
+    let additionalNumber: string | null = null;
+    let region: string | null = null;
+
+    if (countryCode === 'SA') {
+      const errors = saudiWorkspaceRegistrationErrors({
+        commercialRegistrationNumber: dto.commercialRegistrationNumber,
+        vatRegistered: dto.vatRegistered,
+        vatRegistrationNumber: dto.taxId,
+        buildingNumber: dto.buildingNumber,
+        streetName: dto.streetName,
+        district: dto.district,
+        city: dto.city,
+        postalCode: dto.postalCode,
+        additionalNumber: dto.additionalNumber,
+        region: dto.region,
+      });
+      if (errors.length > 0) throw new BadRequestException(errors);
+      commercialRegistrationNumber = dto.commercialRegistrationNumber?.trim() || null;
+      vatRegistrationNumber = dto.vatRegistered ? (dto.taxId?.trim() ?? null) : taxId;
+      taxId = vatRegistrationNumber;
+      buildingNumber = dto.buildingNumber!.trim();
+      streetName = dto.streetName!.trim();
+      district = dto.district!.trim();
+      city = dto.city!.trim();
+      postalCode = dto.postalCode!.trim();
+      additionalNumber = dto.additionalNumber!.trim();
+      region = saudiRegionName(dto.region) ?? dto.region!.trim();
+      address = [
+        `${buildingNumber} ${streetName}`,
+        district,
+        city,
+        postalCode,
+        additionalNumber,
+        region,
+      ].join(', ');
+    }
     const phone = dto.companyPhone.trim();
 
     if (!isKnownCountryCode(countryCode)) {
@@ -423,12 +469,22 @@ export class AuthService {
           data: {
             tenantId: tenant.id,
             legalName: companyName,
+            legalNameAr,
             email: companyEmail,
             phone,
             country: countryName,
             industry: dto.industry as IndustryTemplate,
             address,
             taxId,
+            commercialRegistrationNumber,
+            vatRegistrationNumber,
+            buildingNumber,
+            streetName,
+            district,
+            city,
+            postalCode,
+            additionalNumber,
+            region,
           },
         });
 

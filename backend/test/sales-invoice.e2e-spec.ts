@@ -142,6 +142,16 @@ describeIfDb('Sales invoice workflow', () => {
     const body = saved.body.data ?? saved.body;
     expect(body.status).toBe('PAID');
     expect(Number(body.amountPaid)).toBe(Number(body.total));
+
+    const stock = await request(app.getHttpServer())
+      .get('/api/v1/inventory/stock')
+      .set('Authorization', `Bearer ${tokenA}`);
+    expect(stock.status).toBe(200);
+    const rows = stock.body.data ?? stock.body;
+    const widget = (rows as Array<{ sku: string; quantity: number }>).find(
+      (row) => row.sku === 'SKU-INV-1',
+    );
+    expect(widget?.quantity).toBe(19);
   });
 
   it('returns PDF for saved invoice', async () => {
@@ -150,6 +160,8 @@ describeIfDb('Sales invoice workflow', () => {
       .set('Authorization', `Bearer ${tokenA}`);
     expect(pdf.status).toBe(200);
     expect(pdf.headers['content-type']).toContain('application/pdf');
+    const raw = Buffer.isBuffer(pdf.body) ? pdf.body.toString('utf8') : String(pdf.body);
+    expect(raw.startsWith('%PDF')).toBe(true);
   });
 
   it('rejects duplicate idempotency key reuse with same result', async () => {

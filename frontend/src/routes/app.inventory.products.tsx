@@ -558,6 +558,7 @@ function InventoryProductsPage() {
               <TableHead>{t('Barcode')}</TableHead>
               <TableHead>{t('Image')}</TableHead>
               <TableHead>{t('Status')}</TableHead>
+              <TableHead>{t('On hand')}</TableHead>
               <TableHead>{t('Price')}</TableHead>
               {canManage && <TableHead className="text-right">{t('Actions')}</TableHead>}
             </TableRow>
@@ -597,7 +598,10 @@ function InventoryProductsPage() {
                 <TableCell>
                   <Badge variant="secondary">{p.status}</Badge>
                 </TableCell>
-                <TableCell>{Number(p.unitPrice).toFixed(2)}</TableCell>
+                <TableCell className="tabular-nums">
+                  {p.itemType === 'SERVICE' ? '—' : (p.onHand ?? 0)}
+                </TableCell>
+                <TableCell className="tabular-nums">{Number(p.unitPrice).toFixed(2)}</TableCell>
                 {canManage && (
                   <TableCell className="text-right">
                     <Button
@@ -614,7 +618,7 @@ function InventoryProductsPage() {
             {products.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={canManage ? 10 : 9}
+                  colSpan={canManage ? 11 : 10}
                   className="p-0"
                 >
                   <ModuleEmptyState

@@ -29,6 +29,7 @@ export type InvoicePdfInput = {
     address?: string | null;
     website?: string | null;
     taxId?: string | null;
+    commercialRegistrationNumber?: string | null;
     logoDataUrl?: string | null;
   };
   customer: {
@@ -113,6 +114,9 @@ export class InvoicePdfService {
       const contactBits = [input.company.phone, input.company.email].filter(Boolean).join(' · ');
       if (contactBits) doc.text(contactBits, headerX);
       if (input.company.taxId) doc.text(`VAT: ${input.company.taxId}`, headerX);
+      if (input.company.commercialRegistrationNumber) {
+        doc.text(`CR: ${input.company.commercialRegistrationNumber}`, headerX);
+      }
       doc.fillColor('#000000');
 
       doc.fontSize(22).font('Helvetica-Bold').text('INVOICE', 50, y, {

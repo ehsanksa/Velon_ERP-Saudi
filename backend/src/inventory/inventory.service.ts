@@ -282,15 +282,30 @@ export class InventoryService {
   async listProductsWithVariantCounts(user: AuthenticatedUser, search?: string) {
     this.assertRead(user);
     const rows = await this.products.findMany({ search });
-    const counts = await this.prisma.client.inventoryProductVariant.groupBy({
-      by: ['productId'],
-      where: { tenantId: user.tenantId },
-      _count: { id: true },
-    });
+    const tenantId = user.tenantId!;
+    const [counts, stockSums] = await Promise.all([
+      this.prisma.client.inventoryProductVariant.groupBy({
+        by: ['productId'],
+        where: { tenantId },
+        _count: { id: true },
+      }),
+      this.prisma.client.inventoryStock.groupBy({
+        by: ['productId'],
+        where: { tenantId },
+        _sum: { quantity: true, reservedQty: true },
+      }),
+    ]);
     const countMap = new Map(counts.map((c) => [c.productId, c._count.id]));
+    const onHandMap = new Map(
+      stockSums.map((row) => [
+        row.productId,
+        (row._sum.quantity ?? 0) - (row._sum.reservedQty ?? 0),
+      ]),
+    );
     return rows.map((p) => ({
       ...p,
       variantCount: p.hasVariants ? (countMap.get(p.id) ?? 0) : 0,
+      onHand: p.itemType === 'SERVICE' ? null : (onHandMap.get(p.id) ?? 0),
     }));
   }
 
@@ -356,6 +371,28 @@ export class InventoryService {
               unitCost: dto.costPrice,
             });
           }
+        }
+      } else if (!isService && !dto.hasVariants && (dto.quantity ?? 0) > 0) {
+        let warehouse = (await this.warehouses.findMany(true))[0];
+        if (!warehouse) {
+          warehouse = await this.warehouses.create({ code: 'MAIN', name: 'Main' });
+        }
+        const qty = dto.quantity ?? 0;
+        this.requireBatchDates(product.batchTracked, qty, dto.mfgDate, dto.expiryDate);
+        const stockRow = await this.stock.create({
+          productId: product.id,
+          warehouseId: warehouse.id,
+          quantity: product.batchTracked && qty > 0 ? 0 : qty,
+          minStock: dto.safetyStock ?? 0,
+          reorderLevel: dto.reorderPoint ?? 0,
+        });
+        if (product.batchTracked && qty > 0 && dto.mfgDate && dto.expiryDate) {
+          await this.batches.addBatch(user.tenantId!, stockRow.id, {
+            quantity: qty,
+            mfgDate: dto.mfgDate,
+            expiryDate: dto.expiryDate,
+            unitCost: dto.costPrice,
+          });
         }
       } else if (!isService && dto.variants?.hasVariants && dto.variants.variants?.length) {
         const defaultWarehouse = (await this.warehouses.findMany(true))[0];
@@ -539,8 +576,19 @@ export class InventoryService {
 
   async adjustStock(user: AuthenticatedUser, dto: AdjustInventoryStockDto, meta: AuditMeta) {
     this.assertManage(user);
-    const row = await this.stock.findByProductWarehouse(dto.productId, dto.warehouseId);
-    if (!row) throw new NotFoundException('Stock record not found.');
+    let row = await this.stock.findByProductWarehouse(dto.productId, dto.warehouseId);
+    if (!row) {
+      if (dto.delta <= 0) throw new NotFoundException('Stock record not found.');
+      const product = await this.products.findById(dto.productId);
+      if (!product) throw new NotFoundException('Product not found.');
+      row = await this.stock.create({
+        productId: dto.productId,
+        warehouseId: dto.warehouseId,
+        quantity: 0,
+        minStock: 0,
+        reorderLevel: 0,
+      });
+    }
 
     if (dto.delta > 0 && row.product.batchTracked) {
       this.requireBatchDates(true, dto.delta, dto.mfgDate, dto.expiryDate);
@@ -702,7 +750,7 @@ export class InventoryService {
           mfgDate: dto.mfgDate!,
           expiryDate: dto.expiryDate!,
         });
-      } else if (delta < 0) {
+      } else if (delta < 0 && batchTracked) {
         throw new BadRequestException(
           'Use stock adjustment to reduce batch-tracked quantity (FEFO applies).',
         );

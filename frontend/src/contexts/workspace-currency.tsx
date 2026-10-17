@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { formatWorkspaceMoney } from '@velon/shared';
+import { formatWorkspaceMoney, numberFormatForLanguage } from '@velon/shared';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { apiFetch } from '@/lib/api/client';
+import { useLocale } from '@/lib/i18n/locale-context';
 import { cn } from '@/lib/utils';
 
 const STORAGE_PRESET = 'velon-workspace-currency-preset';
@@ -83,6 +84,7 @@ type WorkspaceCurrencyContextValue = {
 const WorkspaceCurrencyContext = createContext<WorkspaceCurrencyContextValue | null>(null);
 
 export function WorkspaceCurrencyProvider({ children }: { children: ReactNode }) {
+  const { locale } = useLocale();
   const [preset, setPresetState] = useState<WorkspaceCurrencyPreset>('SAR');
   const [customSymbol, setCustomSymbolState] = useState('﷼');
   const [moneyFormat, setMoneyFormat] = useState<{
@@ -156,16 +158,17 @@ export function WorkspaceCurrencyProvider({ children }: { children: ReactNode })
 
   const formatCurrency = useCallback(
     (amount: number) => {
+      const numberFormat = numberFormatForLanguage(locale);
       if (preset === 'CUSTOM') {
         const sym = customSymbol.trim() || moneyFormat.currencySymbol || '﷼';
-        return `${sym}${new Intl.NumberFormat(moneyFormat.numberFormat ?? 'ar-SA', {
+        return `${sym}${new Intl.NumberFormat(numberFormat, {
           minimumFractionDigits: 0,
           maximumFractionDigits: 2,
         }).format(amount)}`;
       }
-      return formatWorkspaceMoney(amount, moneyFormat);
+      return formatWorkspaceMoney(amount, { ...moneyFormat, numberFormat });
     },
-    [preset, customSymbol, moneyFormat],
+    [locale, preset, customSymbol, moneyFormat],
   );
 
   const value = useMemo(

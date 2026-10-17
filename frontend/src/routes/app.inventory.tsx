@@ -1,5 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Boxes, FolderTree, Package, Warehouse } from 'lucide-react';
+import { useT } from '@/lib/i18n/locale-context';
 import { cn } from '@/lib/utils';
 
 const inventoryNav = [
@@ -15,16 +16,17 @@ export const Route = createFileRoute('/app/inventory')({
 
 function InventoryLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const t = useT();
 
   return (
     <div className="space-y-6">
       <div>
         <p className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
-          Operations
+          {t('Operations')}
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">Inventory</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('Inventory')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Product master, categories, warehouses, and live stock — tenant-scoped.
+          {t('Product master, categories, warehouses, and live stock.')}
         </p>
       </div>
 
@@ -47,7 +49,7 @@ function InventoryLayout() {
               )}
             >
               <Icon className="h-4 w-4" />
-              {item.label}
+              {t(item.label)}
             </Link>
           );
         })}
