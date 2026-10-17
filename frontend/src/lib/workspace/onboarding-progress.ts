@@ -29,6 +29,7 @@ type DashboardSnapshot = {
   };
   crmSummary: { customers: number; openQuotations: number };
   inventorySummary: { totalProducts: number };
+  billingSummary?: { invoices: number };
   team: { activeUsers: number };
   seats: { pendingInvites: number };
 };
@@ -39,7 +40,7 @@ export function buildOnboardingSteps(data: DashboardSnapshot): OnboardingStep[] 
   );
   const hasCustomer = data.crmSummary.customers > 0;
   const hasProduct = data.inventorySummary.totalProducts > 0;
-  const hasInvoiceActivity = data.crmSummary.openQuotations > 0 || data.crmSummary.customers > 0;
+  const hasInvoice = (data.billingSummary?.invoices ?? 0) > 0;
   const hasTeam = data.team.activeUsers > 1 || data.seats.pendingInvites > 0;
 
   return [
@@ -82,7 +83,7 @@ export function buildOnboardingSteps(data: DashboardSnapshot): OnboardingStep[] 
       id: 'invoice',
       label: 'Create first invoice',
       description: 'Bill a customer and track payment',
-      done: hasInvoiceActivity && hasCustomer && hasProduct,
+      done: hasInvoice,
       to: '/app/invoices/create',
       icon: FileText,
     },

@@ -23,6 +23,10 @@ export type InvoiceRecord = {
 
 export type InventoryRecord = {
   id: string;
+  productId?: string;
+  variantId?: string;
+  /** False when the catalogue row has no stock record yet. */
+  hasStock?: boolean;
   /** Internal stock-keeping identifier (barcode-ready in ops) */
   sku: string;
   name: string;

@@ -110,6 +110,9 @@ export function emptyWorkspaceDashboard() {
       pendingPurchaseOrders: 0,
       warehouseCount: 0,
     },
+    billingSummary: {
+      invoices: 0,
+    },
   };
 }
 

@@ -38,6 +38,9 @@ export class ApiResponseFilter implements ExceptionFilter {
         message = 'Request payload is too large. Try a smaller product image (under 512 KB).';
       } else {
         this.logger.error(exception.message, exception.stack);
+        if (process.env.NODE_ENV !== 'production' && exception.message) {
+          message = exception.message;
+        }
       }
     }
 

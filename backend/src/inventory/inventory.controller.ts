@@ -29,6 +29,7 @@ import {
   CreateInventoryCategoryDto,
   CreateInventoryProductDto,
   CreateInventoryWarehouseDto,
+  ReceiveInventoryStockDto,
   TransferInventoryStockDto,
   UpdateInventoryCategoryDto,
   UpdateInventoryProductDto,
@@ -187,6 +188,16 @@ export class InventoryController {
   @RequirePermission('inventory:read', 'inventory:*')
   listStock(@CurrentUser() user: AuthenticatedUser, @Query('expiryFilter') expiryFilter?: string) {
     return this.inventory.listStock(user, expiryFilter);
+  }
+
+  @Post('stock/receive')
+  @RequirePermission('inventory:write', 'inventory:*')
+  receiveStock(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ReceiveInventoryStockDto,
+    @Req() req: Request,
+  ) {
+    return this.inventory.receiveStock(user, dto, reqMeta(req));
   }
 
   @Post('stock/adjust')

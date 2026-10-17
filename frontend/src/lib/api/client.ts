@@ -49,6 +49,9 @@ async function parseError(res: Response): Promise<string> {
   } catch {
     /* ignore */
   }
+  if (res.status >= 500) {
+    return 'The server could not complete this request. Refresh and try again.';
+  }
   return res.statusText || `Request failed (${res.status})`;
 }
 

@@ -21,6 +21,7 @@ import {
   CreateInventoryCategoryDto,
   CreateInventoryProductDto,
   CreateInventoryWarehouseDto,
+  ReceiveInventoryStockDto,
   TransferInventoryStockDto,
   UpdateInventoryCategoryDto,
   UpdateInventoryProductDto,
@@ -576,13 +577,15 @@ export class InventoryService {
 
   async adjustStock(user: AuthenticatedUser, dto: AdjustInventoryStockDto, meta: AuditMeta) {
     this.assertManage(user);
-    let row = await this.stock.findByProductWarehouse(dto.productId, dto.warehouseId);
+    const product = await this.products.findById(dto.productId);
+    if (!product) throw new NotFoundException('Product not found.');
+    const variantId = await this.resolveStockVariant(product, dto.variantId);
+    let row = await this.stock.findByProductWarehouse(dto.productId, dto.warehouseId, variantId);
     if (!row) {
       if (dto.delta <= 0) throw new NotFoundException('Stock record not found.');
-      const product = await this.products.findById(dto.productId);
-      if (!product) throw new NotFoundException('Product not found.');
       row = await this.stock.create({
         productId: dto.productId,
+        variantId,
         warehouseId: dto.warehouseId,
         quantity: 0,
         minStock: 0,
@@ -624,6 +627,85 @@ export class InventoryService {
     });
 
     return updated ? this.mapStockRow(updated, soonDays) : null;
+  }
+
+  /** Add quantity for one product or one variant. Does not replace an existing balance. */
+  async receiveStock(user: AuthenticatedUser, dto: ReceiveInventoryStockDto, meta: AuditMeta) {
+    this.assertManage(user);
+    const product = await this.products.findById(dto.productId);
+    if (!product) throw new NotFoundException('Product not found.');
+    if (product.itemType === InventoryItemType.SERVICE) {
+      throw new BadRequestException('Services are not stocked.');
+    }
+    const variantId = await this.resolveStockVariant(product, dto.variantId);
+    const warehouse = await this.resolveReceiveWarehouse(dto.warehouseId, dto.site);
+    let row = await this.stock.findByProductWarehouse(product.id, warehouse.id, variantId);
+    if (!row) {
+      row = await this.stock.create({
+        productId: product.id,
+        variantId,
+        warehouseId: warehouse.id,
+        quantity: 0,
+        minStock: dto.minStock ?? 0,
+        reorderLevel: dto.reorderLevel ?? 0,
+      });
+    } else if (dto.minStock !== undefined || dto.reorderLevel !== undefined) {
+      await this.stock.update(row.id, {
+        ...(dto.minStock !== undefined ? { minStock: dto.minStock } : {}),
+        ...(dto.reorderLevel !== undefined ? { reorderLevel: dto.reorderLevel } : {}),
+      });
+    }
+
+    if (dto.quantity > 0) {
+      await this.adjustStock(
+        user,
+        {
+          productId: product.id,
+          variantId: variantId ?? undefined,
+          warehouseId: warehouse.id,
+          delta: dto.quantity,
+          reason: 'Stock received',
+          mfgDate: dto.mfgDate,
+          expiryDate: dto.expiryDate,
+        },
+        meta,
+      );
+    }
+
+    const updated = await this.stock.findById(row.id, true);
+    const soonDays = await this.expiringSoonDays(user.tenantId!);
+    return updated ? this.mapStockRow(updated, soonDays) : null;
+  }
+
+  private async resolveStockVariant(
+    product: { id: string; tenantId: string; hasVariants: boolean },
+    variantId?: string | null,
+  ) {
+    if (product.hasVariants) {
+      if (!variantId) {
+        throw new BadRequestException('Select a variant before changing stock for this product.');
+      }
+      const variant = await this.prisma.client.inventoryProductVariant.findFirst({
+        where: { id: variantId, productId: product.id, tenantId: product.tenantId },
+      });
+      if (!variant) throw new NotFoundException('Variant not found.');
+      return variant.id;
+    }
+    if (variantId) throw new BadRequestException('This product does not use variants.');
+    return null;
+  }
+
+  private async resolveReceiveWarehouse(warehouseId?: string, site?: string) {
+    if (warehouseId) {
+      const warehouse = await this.warehouses.findById(warehouseId);
+      if (!warehouse) throw new NotFoundException('Warehouse not found.');
+      return warehouse;
+    }
+    const name = site?.trim();
+    if (!name) throw new BadRequestException('Select a warehouse.');
+    const existing = await this.warehouses.findByName(name);
+    if (existing) return existing;
+    return this.warehouses.create({ code: this.warehouseCode(name), name });
   }
 
   async transferStock(user: AuthenticatedUser, dto: TransferInventoryStockDto, meta: AuditMeta) {
@@ -708,7 +790,11 @@ export class InventoryService {
           name: dto.site.trim(),
         });
       }
-      const existing = await this.stock.findByProductWarehouse(row.productId, warehouse.id);
+      const existing = await this.stock.findByProductWarehouse(
+        row.productId,
+        warehouse.id,
+        row.variantId,
+      );
       if (existing && existing.id !== stockId) {
         throw new BadRequestException('Product already has stock at that warehouse.');
       }

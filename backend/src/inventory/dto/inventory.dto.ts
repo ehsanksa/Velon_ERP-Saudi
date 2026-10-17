@@ -476,6 +476,13 @@ export class AdjustInventoryStockDto {
   @IsString()
   warehouseId!: string;
 
+  @ApiPropertyOptional({
+    description: 'Required when the product has variants. Stock is kept per variant.',
+  })
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+
   @ApiProperty()
   @IsInt()
   delta!: number;
@@ -504,6 +511,54 @@ export class AdjustInventoryStockDto {
   @IsNumber()
   @Min(0)
   unitCost?: number;
+}
+
+export class ReceiveInventoryStockDto {
+  @ApiProperty()
+  @IsString()
+  productId!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  warehouseId?: string;
+
+  @ApiPropertyOptional({ description: 'Warehouse name. Used when warehouseId is omitted.' })
+  @IsOptional()
+  @IsString()
+  site?: string;
+
+  @ApiProperty({ description: 'Quantity to add. Existing on-hand is increased, not replaced.' })
+  @IsInt()
+  @Min(0)
+  quantity!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minStock?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  reorderLevel?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  mfgDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  expiryDate?: string;
 }
 
 export class TransferInventoryStockDto {

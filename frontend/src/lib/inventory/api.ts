@@ -290,6 +290,23 @@ export async function updateInventoryWarehouse(
   });
 }
 
+export async function receiveInventoryStock(body: {
+  productId: string;
+  variantId?: string;
+  warehouseId?: string;
+  site?: string;
+  quantity: number;
+  minStock?: number;
+  reorderLevel?: number;
+  mfgDate?: string;
+  expiryDate?: string;
+}) {
+  return apiFetch<InventoryStockRow>('/inventory/stock/receive', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 export async function updateInventoryStock(id: string, body: Record<string, unknown>) {
   return apiFetch<InventoryStockRow>(`/inventory/stock/${id}`, {
     method: 'PATCH',

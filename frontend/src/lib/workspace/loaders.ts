@@ -107,7 +107,8 @@ export async function loadBranchesWorkspace() {
 }
 
 export async function loadInventory() {
-  return tenantFetch('/workspace/inventory', () => [] as InventoryRecord[]);
+  if (!canCallAuthenticatedApi()) return [] as InventoryRecord[];
+  return apiFetch<InventoryRecord[]>('/workspace/inventory');
 }
 
 export async function loadPosBootstrap() {

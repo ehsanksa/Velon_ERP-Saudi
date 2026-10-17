@@ -6,6 +6,7 @@ import {
   InvitationStatus,
   PurchaseOrderStatus,
   PurchaseRequestStatus,
+  SalesInvoiceStatus,
   SupplierStatus,
 } from '@velon/database';
 import { canReadInventory, normalizeVelonRole, planCatalogEntry } from '@velon/shared';
@@ -100,6 +101,8 @@ export class WorkspaceDataService {
       inventoryStocks,
       pendingPurchaseRequests,
       pendingPurchaseOrders,
+      salesInvoices,
+      posTickets,
     ] = await Promise.all([
       this.seats.getSeatSummary(tenantId),
       this.prisma.client.department.count({ where: { tenantId } }),
@@ -145,6 +148,18 @@ export class WorkspaceDataService {
         where: {
           tenantId,
           status: { in: [PurchaseOrderStatus.DRAFT, PurchaseOrderStatus.PENDING_APPROVAL] },
+        },
+      }),
+      this.prisma.client.salesInvoice.count({
+        where: {
+          tenantId,
+          status: { notIn: [SalesInvoiceStatus.CANCELLED, SalesInvoiceStatus.VOID] },
+        },
+      }),
+      this.prisma.client.auditLog.count({
+        where: {
+          tenantId,
+          action: { in: ['pos.sale_paid', 'pos.sale_due'] },
         },
       }),
     ]);
@@ -226,6 +241,9 @@ export class WorkspaceDataService {
         pendingPurchaseRequests,
         pendingPurchaseOrders,
         warehouseCount: inventoryWarehouses,
+      },
+      billingSummary: {
+        invoices: salesInvoices + posTickets,
       },
       quickActions: [
         {
@@ -927,14 +945,27 @@ export class WorkspaceDataService {
     });
 
     const stockedProductIds = [...new Set(stocks.map((row) => row.productId))];
-    const unstocked = await this.prisma.client.inventoryProduct.findMany({
-      where: {
-        tenantId: ctx.tenantId,
-        itemType: 'PRODUCT',
-        ...(stockedProductIds.length ? { id: { notIn: stockedProductIds } } : {}),
-      },
-      orderBy: { name: 'asc' },
-    });
+    const stockedVariantIds = new Set(
+      stocks.map((row) => row.variantId).filter((id): id is string => Boolean(id)),
+    );
+    const [unstocked, variantProducts] = await Promise.all([
+      this.prisma.client.inventoryProduct.findMany({
+        where: {
+          tenantId: ctx.tenantId,
+          itemType: 'PRODUCT',
+          hasVariants: false,
+          ...(stockedProductIds.length ? { id: { notIn: stockedProductIds } } : {}),
+        },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.client.inventoryProduct.findMany({
+        where: { tenantId: ctx.tenantId, itemType: 'PRODUCT', hasVariants: true },
+        include: {
+          variants: { where: { status: 'ACTIVE' }, orderBy: { sortOrder: 'asc' } },
+        },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
 
     const stockRows = stocks.map((row) => {
       const available = row.quantity - row.reservedQty;
@@ -952,6 +983,9 @@ export class WorkspaceDataService {
 
       return {
         id: row.id,
+        productId: row.productId,
+        variantId: row.variantId ?? undefined,
+        hasStock: true,
         sku: row.variant?.sku ?? row.product.sku,
         name: row.variant ? `${row.product.name} — ${row.variant.label}` : row.product.name,
         site: row.warehouse.name,
@@ -972,7 +1006,9 @@ export class WorkspaceDataService {
     });
 
     const catalogRows = unstocked.map((product) => ({
-      id: product.id,
+      id: `product:${product.id}`,
+      productId: product.id,
+      hasStock: false,
       sku: product.sku,
       name: product.name,
       site: '',
@@ -989,7 +1025,32 @@ export class WorkspaceDataService {
       batches: [],
     }));
 
-    return [...stockRows, ...catalogRows];
+    const variantRows = variantProducts.flatMap((product) =>
+      product.variants
+        .filter((variant) => !stockedVariantIds.has(variant.id))
+        .map((variant) => ({
+          id: `variant:${variant.id}`,
+          productId: product.id,
+          variantId: variant.id,
+          hasStock: false,
+          sku: variant.sku,
+          name: `${product.name} — ${variant.label}`,
+          site: '',
+          quantity: 0,
+          stockLevel: 'healthy' as const,
+          safetyStock: 0,
+          reorderPoint: 0,
+          abcClass: product.abcClass,
+          velocity: product.velocity.toLowerCase(),
+          batchTracked: product.batchTracked,
+          variantParent: product.name,
+          unitPrice: Number(variant.salePrice ?? variant.unitPrice ?? product.unitPrice),
+          expiryStatus: 'no_expiry' as const,
+          batches: [],
+        })),
+    );
+
+    return [...stockRows, ...variantRows, ...catalogRows];
   }
 
   async posBootstrap(user: Parameters<WorkspaceContextService['resolve']>[0]) {

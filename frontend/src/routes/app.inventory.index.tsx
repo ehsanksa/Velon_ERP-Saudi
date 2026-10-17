@@ -46,6 +46,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWorkspaceCurrency } from '@/contexts/workspace-currency';
 import { useT } from '@/lib/i18n/locale-context';
+import {
+  getInventoryProduct,
+  listInventoryProducts,
+  listInventoryWarehouses,
+  receiveInventoryStock,
+  type InventoryProduct,
+  type InventoryWarehouse,
+  type ProductVariant,
+} from '@/lib/inventory/api';
 import type { InventoryRecord } from '@/lib/types/workspace-ui';
 import { loadInventory } from '@/lib/workspace/loaders';
 import { createInventoryItem, updateInventoryItem } from '@/lib/workspace/mutations';
@@ -119,16 +128,32 @@ function InventoryPage() {
   const { formatCurrency } = useWorkspaceCurrency();
   const loaded = Route.useLoaderData();
   const [items, setItems] = useState<InventoryRecord[]>(loaded);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    loadInventory()
-      .then((rows) => {
-        if (!cancelled) setItems(rows);
-      })
-      .catch((error) => {
-        toast.error(error instanceof Error ? error.message : t('Failed to load inventory'));
-      });
+    async function refreshInventory() {
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const rows = await loadInventory();
+          if (!cancelled) {
+            setItems(rows);
+            setLoadError(null);
+          }
+          return;
+        } catch (error) {
+          lastError = error;
+          await new Promise((resolve) => setTimeout(resolve, 700));
+        }
+      }
+      if (cancelled) return;
+      const message =
+        lastError instanceof Error ? lastError.message : t('Failed to load inventory');
+      setLoadError(message);
+      toast.error(message);
+    }
+    void refreshInventory();
     return () => {
       cancelled = true;
     };
@@ -150,13 +175,14 @@ function InventoryPage() {
     const totalSkus = items.length;
     const belowReorder = items.filter(needsReplenishment).length;
     const critical = items.filter((i) => i.stockLevel === 'critical').length;
-    const locations = new Set(items.map((i) => i.site)).size;
+    const locations = new Set(items.map((i) => i.site).filter(Boolean)).size;
     return { totalSkus, belowReorder, critical, locations };
   }, [items]);
 
   const bySite = useMemo(() => {
     const m = new Map<string, { skus: number; units: number }>();
     for (const i of items) {
+      if (!i.site) continue;
       const cur = m.get(i.site) ?? { skus: 0, units: 0 };
       m.set(i.site, { skus: cur.skus + 1, units: cur.units + i.quantity });
     }
@@ -198,6 +224,15 @@ function InventoryPage() {
   const [mfgDate, setMfgDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [variantParent, setVariantParent] = useState('');
+  const [catalog, setCatalog] = useState<InventoryProduct[]>([]);
+  const [warehouses, setWarehouses] = useState<InventoryWarehouse[]>([]);
+  const [receiveProductId, setReceiveProductId] = useState('');
+  const [receiveVariantId, setReceiveVariantId] = useState('');
+  const [receiveWarehouseId, setReceiveWarehouseId] = useState('');
+  const [productVariants, setProductVariants] = useState<ProductVariant[]>([]);
+
+  const receiving = !editingItem || editingItem.hasStock === false;
+  const selectedProduct = catalog.find((product) => product.id === receiveProductId);
 
   function resetInventoryForm() {
     setEditingItem(null);
@@ -214,14 +249,65 @@ function InventoryPage() {
     setMfgDate('');
     setExpiryDate('');
     setVariantParent('');
+    setReceiveProductId('');
+    setReceiveVariantId('');
+    setReceiveWarehouseId('');
+    setProductVariants([]);
+  }
+
+  async function loadReceiveCatalog() {
+    const [products, warehouseRows] = await Promise.all([
+      listInventoryProducts(),
+      listInventoryWarehouses(),
+    ]);
+    const stockedProducts = products.filter((product) => product.itemType !== 'SERVICE');
+    setCatalog(stockedProducts);
+    setWarehouses(warehouseRows.filter((warehouse) => warehouse.isActive));
+    return { products: stockedProducts, warehouseRows };
+  }
+
+  async function selectReceiveProduct(
+    productId: string,
+    variantId = '',
+    products: InventoryProduct[] = catalog,
+  ) {
+    setReceiveProductId(productId);
+    setReceiveVariantId(variantId);
+    const product = products.find((row) => row.id === productId);
+    setBatchTracked(Boolean(product?.batchTracked));
+    if (!product?.hasVariants) {
+      setProductVariants([]);
+      return;
+    }
+    const detail = await getInventoryProduct(productId);
+    setProductVariants(detail.variants ?? []);
+    setBatchTracked(Boolean(detail.batchTracked));
   }
 
   function openAddDialog() {
     resetInventoryForm();
     setOpen(true);
+    void loadReceiveCatalog().catch((error) => {
+      toast.error(error instanceof Error ? error.message : t('Failed to load inventory'));
+    });
   }
 
   function openEditDialog(item: InventoryRecord) {
+    if (item.hasStock === false) {
+      resetInventoryForm();
+      setOpen(true);
+      void loadReceiveCatalog()
+        .then(({ products }) =>
+          selectReceiveProduct(item.productId ?? '', item.variantId ?? '', products),
+        )
+        .catch((error) => {
+          toast.error(error instanceof Error ? error.message : t('Failed to load inventory'));
+        });
+      if (item.productId) setReceiveProductId(item.productId);
+      if (item.variantId) setReceiveVariantId(item.variantId);
+      setBatchTracked(item.batchTracked);
+      return;
+    }
     setEditingItem(item);
     setName(item.name);
     setSite(item.site);
@@ -272,7 +358,31 @@ function InventoryPage() {
         unitPrice: Number.isFinite(price) ? price : undefined,
       };
 
-      if (editingItem) {
+      if (receiving) {
+        if (!receiveProductId) {
+          toast.error(t('Select a product'));
+          return;
+        }
+        if (selectedProduct?.hasVariants && !receiveVariantId) {
+          toast.error(t('Select a variant'));
+          return;
+        }
+        if (!receiveWarehouseId) {
+          toast.error(t('Select a warehouse'));
+          return;
+        }
+        await receiveInventoryStock({
+          productId: receiveProductId,
+          variantId: receiveVariantId || undefined,
+          warehouseId: receiveWarehouseId,
+          quantity: qty,
+          minStock: Number.isFinite(ss) ? ss : undefined,
+          reorderLevel: Number.isFinite(rp) ? rp : undefined,
+          mfgDate: batchTracked ? mfgDate : undefined,
+          expiryDate: batchTracked ? expiryDate : undefined,
+        });
+        toast.success(t('Stock added'));
+      } else if (editingItem) {
         await updateInventoryItem(editingItem.id, data);
         toast.success('SKU updated');
       } else {
@@ -310,6 +420,11 @@ function InventoryPage() {
           value="desk"
           className="mt-0 space-y-6 outline-none"
         >
+          {loadError ? (
+            <div className="border-destructive/40 bg-destructive/10 text-destructive rounded-lg border px-4 py-3 text-sm">
+              {loadError} {t('Saved products and stock are still in the database.')}
+            </div>
+          ) : null}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               {
@@ -424,54 +539,143 @@ function InventoryPage() {
           >
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>{editingItem ? 'Edit SKU' : 'Add SKU'}</DialogTitle>
+                <DialogTitle>{receiving ? t('Add stock') : 'Edit SKU'}</DialogTitle>
                 <DialogDescription>
-                  Set safety stock and reorder point — status (healthy / low / critical) is computed
-                  automatically.
+                  {receiving
+                    ? t('Choose a catalogue product. Variants are stocked separately.')
+                    : 'Set safety stock and reorder point — status (healthy / low / critical) is computed automatically.'}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-3 py-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="inv-name">Product name</Label>
-                  <Input
-                    id="inv-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Oat Milk Carton"
-                  />
-                </div>
+                {receiving ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label>{t('Select a product')}</Label>
+                      <Select
+                        value={receiveProductId || 'none'}
+                        onValueChange={(value) => {
+                          void selectReceiveProduct(value === 'none' ? '' : value);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('Select a product')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t('Select a product')}</SelectItem>
+                          {catalog.map((product) => (
+                            <SelectItem
+                              key={product.id}
+                              value={product.id}
+                            >
+                              {product.name} · {product.sku}
+                              {product.hasVariants
+                                ? ` · ${t('{count} variants', { count: String(product.variantCount ?? 0) })}`
+                                : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {selectedProduct?.hasVariants ? (
+                      <div className="space-y-1.5">
+                        <Label>{t('Select a variant')}</Label>
+                        <Select
+                          value={receiveVariantId || 'none'}
+                          onValueChange={(value) =>
+                            setReceiveVariantId(value === 'none' ? '' : value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('Select a variant')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">{t('Select a variant')}</SelectItem>
+                            {productVariants.map((variant) => (
+                              <SelectItem
+                                key={variant.id}
+                                value={variant.id}
+                              >
+                                {variant.label} · {variant.sku}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-muted-foreground text-xs">
+                          {t('This product has variants. Stock is tracked per variant.')}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div className="space-y-1.5">
+                      <Label>{t('Select a warehouse')}</Label>
+                      <Select
+                        value={receiveWarehouseId || 'none'}
+                        onValueChange={(value) =>
+                          setReceiveWarehouseId(value === 'none' ? '' : value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('Select a warehouse')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t('Select a warehouse')}</SelectItem>
+                          {warehouses.map((warehouse) => (
+                            <SelectItem
+                              key={warehouse.id}
+                              value={warehouse.id}
+                            >
+                              {warehouse.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : null}
+                {!receiving ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="inv-name">Product name</Label>
+                      <Input
+                        id="inv-name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Oat Milk Carton"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="inv-sku">SKU (optional)</Label>
+                        <Input
+                          id="inv-sku"
+                          value={sku}
+                          onChange={(e) => setSku(e.target.value)}
+                          placeholder="Auto if empty"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="inv-site">Warehouse</Label>
+                        <Input
+                          id="inv-site"
+                          value={site}
+                          onChange={(e) => setSite(e.target.value)}
+                          placeholder="Warehouse B"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="inv-variant">Variant group (optional)</Label>
+                      <Input
+                        id="inv-variant"
+                        value={variantParent}
+                        onChange={(e) => setVariantParent(e.target.value)}
+                        placeholder="Parent product line"
+                      />
+                    </div>
+                  </>
+                ) : null}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="inv-sku">SKU (optional)</Label>
-                    <Input
-                      id="inv-sku"
-                      value={sku}
-                      onChange={(e) => setSku(e.target.value)}
-                      placeholder="Auto if empty"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="inv-site">Warehouse</Label>
-                    <Input
-                      id="inv-site"
-                      value={site}
-                      onChange={(e) => setSite(e.target.value)}
-                      placeholder="Warehouse B"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="inv-variant">Variant group (optional)</Label>
-                  <Input
-                    id="inv-variant"
-                    value={variantParent}
-                    onChange={(e) => setVariantParent(e.target.value)}
-                    placeholder="Parent product line"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="inv-qty">On hand</Label>
+                    <Label htmlFor="inv-qty">{receiving ? t('Quantity to add') : 'On hand'}</Label>
                     <Input
                       id="inv-qty"
                       inputMode="numeric"
@@ -567,11 +771,18 @@ function InventoryPage() {
                 </Button>
                 <Button
                   type="button"
-                  disabled={submitting || !name.trim() || !site.trim()}
+                  disabled={
+                    submitting ||
+                    (receiving
+                      ? !receiveProductId ||
+                        !receiveWarehouseId ||
+                        Boolean(selectedProduct?.hasVariants && !receiveVariantId)
+                      : !name.trim() || !site.trim())
+                  }
                   className="bg-foreground text-background hover:bg-foreground/90"
                   onClick={handleSaveInventory}
                 >
-                  {submitting ? 'Saving…' : editingItem ? 'Update SKU' : 'Save SKU'}
+                  {submitting ? 'Saving…' : receiving ? t('Add stock') : 'Update SKU'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -626,7 +837,7 @@ function InventoryPage() {
                   className="bg-foreground text-background hover:bg-foreground/90"
                   onClick={openAddDialog}
                 >
-                  <Plus className="mr-1.5 h-4 w-4" /> Add product
+                  <Plus className="mr-1.5 h-4 w-4" /> {t('Add stock')}
                 </Button>
               </div>
             </div>
@@ -737,7 +948,8 @@ function InventoryPage() {
                           className="h-8 rounded-lg px-2 text-xs"
                           onClick={() => openEditDialog(item)}
                         >
-                          <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+                          <Pencil className="mr-1 h-3.5 w-3.5" />{' '}
+                          {item.hasStock === false ? t('Add stock') : 'Edit'}
                         </Button>
                       </TableCell>
                     </TableRow>

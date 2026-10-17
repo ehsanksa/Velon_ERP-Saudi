@@ -874,4 +874,18 @@ export const AR: Record<string, string> = {
   'Postal code must be 5 digits when provided.': 'الرمز البريدي يجب أن يكون 5 أرقام.',
   'National address additional number must be 4 digits when provided.':
     'الرقم الإضافي في العنوان الوطني يجب أن يكون 4 أرقام.',
+  'Add stock': 'إضافة مخزون',
+  'Select a product': 'اختر منتجاً',
+  'Select a variant': 'اختر متغيراً',
+  'Select a warehouse': 'اختر مستودعاً',
+  'Quantity to add': 'الكمية المضافة',
+  'Stock added': 'تمت إضافة المخزون',
+  'Choose a catalogue product. Variants are stocked separately.':
+    'اختر منتجاً من الدليل. يُسجَّل مخزون كل متغير على حدة.',
+  'This product has variants. Stock is tracked per variant.':
+    'لهذا المنتج متغيرات. يُتابع المخزون لكل متغير.',
+  'Saved products and stock are still in the database.':
+    'المنتجات والمخزون المحفوظة ما زالت في قاعدة البيانات.',
+  'The server could not complete this request. Refresh and try again.':
+    'تعذر على الخادم إكمال الطلب. حدّث الصفحة وحاول مرة أخرى.',
 };

@@ -174,6 +174,13 @@ describe('InventoryService', () => {
     });
 
     it('adjusts stock and rejects negative resulting quantity', async () => {
+      products.findById.mockResolvedValue({
+        id: IDS.product,
+        tenantId: 'tenant-1',
+        hasVariants: false,
+        itemType: 'PRODUCT',
+        batchTracked: false,
+      });
       stock.findByProductWarehouse.mockResolvedValue(stockRow({ quantity: 3 }));
       await expect(
         service.adjustStock(
