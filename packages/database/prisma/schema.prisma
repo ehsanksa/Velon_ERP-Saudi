@@ -223,6 +223,11 @@ model User {
   hrPayrollRunsProcessed       HrPayrollRun[]                @relation("HrPayrollRunProcessedBy")
   hrExpenseClaimsRequested     HrExpenseClaim[]              @relation("HrExpenseClaimRequester")
   hrExpenseClaimsApproved      HrExpenseClaim[]              @relation("HrExpenseClaimApprover")
+  qiwaEstablishmentsCreated    HrQiwaEstablishment[]         @relation("QiwaEstablishmentCreatedBy")
+  qiwaEstablishmentsUpdated    HrQiwaEstablishment[]         @relation("QiwaEstablishmentUpdatedBy")
+  qiwaContractsCreated         HrQiwaContract[]              @relation("QiwaContractCreatedBy")
+  qiwaContractsUpdated         HrQiwaContract[]              @relation("QiwaContractUpdatedBy")
+  qiwaContractEvents           HrQiwaContractEvent[]         @relation("QiwaContractEventActor")
   inventoryWarehousesManaged   InventoryWarehouse[]          @relation("InventoryWarehouseManager")
   inventoryProductsCreated     InventoryProduct[]            @relation("InventoryProductCreatedBy")
   purchaseRequestsRequested    PurchaseRequest[]             @relation("PurchaseRequestRequestedBy")
@@ -322,6 +327,9 @@ model Tenant {
   hrPayrollRuns                          HrPayrollRun[]
   hrPayslips                             HrPayslip[]
   hrExpenseClaims                        HrExpenseClaim[]
+  hrQiwaEstablishments                   HrQiwaEstablishment[]
+  hrQiwaContracts                        HrQiwaContract[]
+  hrQiwaContractEvents                   HrQiwaContractEvent[]
   inventoryCategories                    InventoryCategory[]
   inventoryProducts                      InventoryProduct[]
   inventoryProductVariantAttributes      InventoryProductVariantAttribute[]
@@ -1995,6 +2003,9 @@ model HrEmployee {
   bankAccountNumber String?
   bankName          String?
   notes             String?
+  identityType      QiwaIdentityType?
+  nationalId        String?
+  nationality       String?
   createdById       String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
@@ -2014,12 +2025,14 @@ model HrEmployee {
   attendance      HrAttendanceRecord[]
   payslips        HrPayslip[]
   expenseClaims   HrExpenseClaim[]
+  qiwaContracts   HrQiwaContract[]
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([tenantId, departmentId])
   @@index([tenantId, managerId])
+  @@index([tenantId, nationalId])
 }
 
 model HrEmployeeDocument {
@@ -2362,6 +2375,178 @@ model HrExpenseClaim {
   @@index([tenantId])
   @@index([tenantId, employeeId])
   @@index([tenantId, status])
+}
+
+enum QiwaEstablishmentStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum QiwaNitaqatBand {
+  PLATINUM
+  HIGH_GREEN
+  MID_GREEN
+  LOW_GREEN
+  YELLOW
+  RED
+  UNKNOWN
+}
+
+enum QiwaIdentityType {
+  NATIONAL_ID
+  IQAMA
+}
+
+enum QiwaContractType {
+  FIXED_TERM
+  INDEFINITE
+}
+
+enum QiwaWageBasis {
+  MONTHLY
+  OTHER
+}
+
+enum QiwaContractStatus {
+  DRAFT
+  READY
+  PENDING_EMPLOYEE
+  AMENDMENT_REQUESTED
+  REJECTED
+  DOCUMENTED
+  ENFORCEABLE
+  UPDATE_PENDING
+  TERMINATED
+  EXPIRED
+}
+
+enum QiwaContractEventType {
+  CREATED
+  UPDATED
+  VALIDATED
+  SENT_TO_EMPLOYEE
+  EMPLOYEE_APPROVED
+  EMPLOYEE_REJECTED
+  AMENDMENT_REQUESTED
+  DOCUMENTED
+  EXECUTION_RECORDED
+  UPDATE_SUBMITTED
+  TERMINATED
+  EXPIRED
+}
+
+/// Establishment file used by Qiwa Contract Management (labor office + sequence).
+model HrQiwaEstablishment {
+  id                              String                   @id @default(cuid())
+  tenantId                        String
+  nameAr                          String?
+  nameEn                          String
+  laborOfficeId                   String?
+  sequenceNumber                  String?
+  commercialRegistrationNumber    String?
+  unifiedNumber                   String?
+  economicActivity                String?
+  status                          QiwaEstablishmentStatus  @default(DRAFT)
+  isPrimary                       Boolean                  @default(true)
+  nitaqatBand                     QiwaNitaqatBand          @default(UNKNOWN)
+  saudiCount                      Int?
+  nonSaudiCount                   Int?
+  saudizationPercent              Decimal?                 @db.Decimal(5, 2)
+  nitaqatRecordedAt               DateTime?
+  saudizationCertificateExpiresAt DateTime?                @db.Date
+  notes                           String?
+  createdById                     String?
+  updatedById                     String?
+  createdAt                       DateTime                 @default(now())
+  updatedAt                       DateTime                 @updatedAt
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?            @relation("QiwaEstablishmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?            @relation("QiwaEstablishmentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  contracts HrQiwaContract[]
+
+  @@index([tenantId])
+  @@index([tenantId, isPrimary])
+}
+
+/// Employment contract prepared for Qiwa authentication and kept as the HR record.
+model HrQiwaContract {
+  id                   String             @id @default(cuid())
+  tenantId             String
+  establishmentId      String
+  employeeId           String
+  referenceCode        String
+  qiwaContractNumber   String?
+  status               QiwaContractStatus @default(DRAFT)
+  contractType         QiwaContractType
+  identityType         QiwaIdentityType
+  nationalId           String
+  employeeNameEn       String
+  employeeNameAr       String?
+  nationality          String
+  occupationTitle      String
+  jobTitle             String?
+  startDate            DateTime           @db.Date
+  endDate              DateTime?          @db.Date
+  probationDays        Int                @default(90)
+  dailyHours           Decimal            @default(8) @db.Decimal(4, 2)
+  weeklyHours          Decimal            @default(48) @db.Decimal(4, 2)
+  workLocation         String?
+  wageBasis            QiwaWageBasis      @default(MONTHLY)
+  basicWage            Decimal            @default(0) @db.Decimal(14, 2)
+  housingAllowance     Decimal            @default(0) @db.Decimal(14, 2)
+  transportAllowance   Decimal            @default(0) @db.Decimal(14, 2)
+  otherAllowances      Decimal            @default(0) @db.Decimal(14, 2)
+  totalWage            Decimal            @default(0) @db.Decimal(14, 2)
+  currency             String             @default("SAR")
+  noticePeriodDays     Int                @default(60)
+  additionalTerms      String?
+  gosiRegistered       Boolean            @default(false)
+  listedOnQiwa         Boolean            @default(false)
+  amendmentNote        String?
+  executionNumber      String?
+  terminationReason    String?
+  sentToEmployeeAt     DateTime?
+  documentedAt         DateTime?
+  terminatedAt         DateTime?
+  createdById          String?
+  updatedById          String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  establishment HrQiwaEstablishment    @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  employee      HrEmployee             @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  createdBy     User?                  @relation("QiwaContractCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy     User?                  @relation("QiwaContractUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  events        HrQiwaContractEvent[]
+
+  @@unique([tenantId, referenceCode])
+  @@index([tenantId])
+  @@index([tenantId, employeeId])
+  @@index([tenantId, status])
+  @@index([tenantId, establishmentId])
+}
+
+model HrQiwaContractEvent {
+  id         String                @id @default(cuid())
+  tenantId   String
+  contractId String
+  type       QiwaContractEventType
+  fromStatus QiwaContractStatus?
+  toStatus   QiwaContractStatus?
+  note       String?
+  actorId    String?
+  createdAt  DateTime              @default(now())
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contract HrQiwaContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  actor    User?          @relation("QiwaContractEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, contractId])
 }
 
 /// Effective-dated Saudi VAT rates. Line treatment is chosen per transaction.

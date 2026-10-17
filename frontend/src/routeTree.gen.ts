@@ -76,6 +76,7 @@ import { Route as AppInvoicesInvoiceIdRouteImport } from './routes/app.invoices.
 import { Route as AppInventoryWarehousesRouteImport } from './routes/app.inventory.warehouses'
 import { Route as AppInventoryProductsRouteImport } from './routes/app.inventory.products'
 import { Route as AppInventoryCategoriesRouteImport } from './routes/app.inventory.categories'
+import { Route as AppHrQiwaRouteImport } from './routes/app.hr.qiwa'
 import { Route as AppHrPayrollRouteImport } from './routes/app.hr.payroll'
 import { Route as AppHrLeaveRouteImport } from './routes/app.hr.leave'
 import { Route as AppHrEmployeesRouteImport } from './routes/app.hr.employees'
@@ -425,6 +426,11 @@ const AppInventoryCategoriesRoute = AppInventoryCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AppInventoryRoute,
 } as any)
+const AppHrQiwaRoute = AppHrQiwaRouteImport.update({
+  id: '/qiwa',
+  path: '/qiwa',
+  getParentRoute: () => AppHrRoute,
+} as any)
 const AppHrPayrollRoute = AppHrPayrollRouteImport.update({
   id: '/payroll',
   path: '/payroll',
@@ -560,6 +566,7 @@ export interface FileRoutesByFullPath {
   '/app/hr/employees': typeof AppHrEmployeesRoute
   '/app/hr/leave': typeof AppHrLeaveRoute
   '/app/hr/payroll': typeof AppHrPayrollRoute
+  '/app/hr/qiwa': typeof AppHrQiwaRoute
   '/app/inventory/categories': typeof AppInventoryCategoriesRoute
   '/app/inventory/products': typeof AppInventoryProductsRoute
   '/app/inventory/warehouses': typeof AppInventoryWarehousesRoute
@@ -635,6 +642,7 @@ export interface FileRoutesByTo {
   '/app/hr/employees': typeof AppHrEmployeesRoute
   '/app/hr/leave': typeof AppHrLeaveRoute
   '/app/hr/payroll': typeof AppHrPayrollRoute
+  '/app/hr/qiwa': typeof AppHrQiwaRoute
   '/app/inventory/categories': typeof AppInventoryCategoriesRoute
   '/app/inventory/products': typeof AppInventoryProductsRoute
   '/app/inventory/warehouses': typeof AppInventoryWarehousesRoute
@@ -718,6 +726,7 @@ export interface FileRoutesById {
   '/app/hr/employees': typeof AppHrEmployeesRoute
   '/app/hr/leave': typeof AppHrLeaveRoute
   '/app/hr/payroll': typeof AppHrPayrollRoute
+  '/app/hr/qiwa': typeof AppHrQiwaRoute
   '/app/inventory/categories': typeof AppInventoryCategoriesRoute
   '/app/inventory/products': typeof AppInventoryProductsRoute
   '/app/inventory/warehouses': typeof AppInventoryWarehousesRoute
@@ -802,6 +811,7 @@ export interface FileRouteTypes {
     | '/app/hr/employees'
     | '/app/hr/leave'
     | '/app/hr/payroll'
+    | '/app/hr/qiwa'
     | '/app/inventory/categories'
     | '/app/inventory/products'
     | '/app/inventory/warehouses'
@@ -877,6 +887,7 @@ export interface FileRouteTypes {
     | '/app/hr/employees'
     | '/app/hr/leave'
     | '/app/hr/payroll'
+    | '/app/hr/qiwa'
     | '/app/inventory/categories'
     | '/app/inventory/products'
     | '/app/inventory/warehouses'
@@ -959,6 +970,7 @@ export interface FileRouteTypes {
     | '/app/hr/employees'
     | '/app/hr/leave'
     | '/app/hr/payroll'
+    | '/app/hr/qiwa'
     | '/app/inventory/categories'
     | '/app/inventory/products'
     | '/app/inventory/warehouses'
@@ -1470,6 +1482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInventoryCategoriesRouteImport
       parentRoute: typeof AppInventoryRoute
     }
+    '/app/hr/qiwa': {
+      id: '/app/hr/qiwa'
+      path: '/qiwa'
+      fullPath: '/app/hr/qiwa'
+      preLoaderRoute: typeof AppHrQiwaRouteImport
+      parentRoute: typeof AppHrRoute
+    }
     '/app/hr/payroll': {
       id: '/app/hr/payroll'
       path: '/payroll'
@@ -1653,6 +1672,7 @@ interface AppHrRouteChildren {
   AppHrEmployeesRoute: typeof AppHrEmployeesRoute
   AppHrLeaveRoute: typeof AppHrLeaveRoute
   AppHrPayrollRoute: typeof AppHrPayrollRoute
+  AppHrQiwaRoute: typeof AppHrQiwaRoute
   AppHrIndexRoute: typeof AppHrIndexRoute
 }
 
@@ -1661,6 +1681,7 @@ const AppHrRouteChildren: AppHrRouteChildren = {
   AppHrEmployeesRoute: AppHrEmployeesRoute,
   AppHrLeaveRoute: AppHrLeaveRoute,
   AppHrPayrollRoute: AppHrPayrollRoute,
+  AppHrQiwaRoute: AppHrQiwaRoute,
   AppHrIndexRoute: AppHrIndexRoute,
 }
 

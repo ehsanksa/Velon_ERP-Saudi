@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Briefcase, CalendarDays, Clock, Users, Wallet } from 'lucide-react';
+import { Briefcase, CalendarDays, Clock, ScrollText, Users, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { workspaceAdminSearch } from '@velon/shared';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,12 @@ const HR_LINKS = [
     description: 'Manage employee records, hire dates, and compensation',
     to: '/app/hr/employees' as const,
     icon: Users,
+  },
+  {
+    label: 'Qiwa contracts',
+    description: 'Authenticate employment contracts and keep the Qiwa establishment file',
+    to: '/app/hr/qiwa' as const,
+    icon: ScrollText,
   },
   {
     label: 'Leave',
@@ -65,7 +71,7 @@ function HrHubPage() {
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">HR & Payroll</h1>
         <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-          Manage employees, leave, attendance, and payroll from one hub.
+          Manage employees, Qiwa contracts, leave, attendance, and payroll from one hub.
         </p>
       </div>
 

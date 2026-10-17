@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 
 const hrNav = [
   { to: '/app/hr/employees', label: 'Employees' },
+  { to: '/app/hr/qiwa', label: 'Qiwa contracts' },
   { to: '/app/hr/leave', label: 'Leave' },
   { to: '/app/hr/attendance', label: 'Attendance' },
   { to: '/app/hr/payroll', label: 'Payroll' },

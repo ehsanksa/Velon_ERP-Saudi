@@ -300,6 +300,14 @@ export class HrService {
   async deleteEmployee(user: AuthenticatedUser, id: string) {
     this.assertWrite(user);
     await this.getEmployee(user, id);
+    const qiwaContracts = await this.prisma.client.hrQiwaContract.count({
+      where: { tenantId: user.tenantId, employeeId: id },
+    });
+    if (qiwaContracts > 0) {
+      throw new BadRequestException(
+        'This employee has Qiwa contract records. End those contracts before deleting the employee.',
+      );
+    }
     return this.employees.delete(id);
   }
 
