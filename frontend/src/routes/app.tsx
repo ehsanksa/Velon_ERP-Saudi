@@ -22,6 +22,12 @@ export const Route = createFileRoute('/app')({
 
 function AppLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const editingInvoice = useRouterState({
+    select: (s) => {
+      const search = s.location.search as { invoiceId?: unknown };
+      return typeof search?.invoiceId === 'string' && search.invoiceId.length > 0;
+    },
+  });
   const titleByPath: Record<string, { title: string; subtitle: string }> = {
     '/app': {
       title: 'Dashboard',
@@ -124,7 +130,16 @@ function AppLayout() {
       subtitle: 'Leads, quotes, and sales pipeline',
     },
   };
-  const page = titleByPath[pathname] ?? titleByPath['/app'];
+  const page =
+    pathname === '/app/invoices/create' && editingInvoice
+      ? {
+          title: 'Edit Invoice',
+          subtitle: 'Update customer, lines, and totals',
+        }
+      : (titleByPath[pathname] ??
+        (pathname.startsWith('/app/invoices/')
+          ? titleByPath['/app/invoices']
+          : titleByPath['/app']));
   return (
     <WorkspaceAuthGate>
       <WorkspaceShell

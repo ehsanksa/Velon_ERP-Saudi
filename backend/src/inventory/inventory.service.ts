@@ -14,6 +14,7 @@ import {
 import { canManageInventory, canReadInventory, normalizeVelonRole } from '@velon/shared';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { rethrowPrismaAsBadRequest } from '../common/prisma-errors';
 import { NotificationService } from '../email/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -21,6 +22,7 @@ import {
   CreateInventoryCategoryDto,
   CreateInventoryProductDto,
   CreateInventoryWarehouseDto,
+  DeleteInventoryItemsDto,
   ReceiveInventoryStockDto,
   TransferInventoryStockDto,
   UpdateInventoryCategoryDto,
@@ -271,6 +273,88 @@ export class InventoryService {
     }
     await this.categories.delete(id);
     return { ok: true };
+  }
+
+  /**
+   * Removes catalogue products or a single variant.
+   * Stock for the removed product or variant is deleted with it.
+   * Invoice lines keep their saved names and are unlinked from the catalogue.
+   */
+  async deleteItems(user: AuthenticatedUser, dto: DeleteInventoryItemsDto, meta: AuditMeta) {
+    this.assertManage(user);
+    const tenantId = user.tenantId!;
+    const productIds = new Set<string>();
+    const variantIds = new Set<string>();
+    for (const item of dto.items) {
+      if (item.variantId) variantIds.add(item.variantId);
+      else if (item.productId) productIds.add(item.productId);
+      else throw new BadRequestException('Each item needs a product or a variant.');
+    }
+
+    let deleted = 0;
+    try {
+      deleted = await this.prisma.client.$transaction(async (tx) => {
+        let count = 0;
+        const variants = variantIds.size
+          ? await tx.inventoryProductVariant.findMany({
+              where: { tenantId, id: { in: [...variantIds] } },
+            })
+          : [];
+        if (variants.length !== variantIds.size) {
+          throw new NotFoundException('One or more variants were not found.');
+        }
+        const variantsToRemove = variants.filter((variant) => !productIds.has(variant.productId));
+
+        if (productIds.size) {
+          const products = await tx.inventoryProduct.findMany({
+            where: { tenantId, id: { in: [...productIds] } },
+            select: { id: true },
+          });
+          if (products.length !== productIds.size) {
+            throw new NotFoundException('One or more products were not found.');
+          }
+          await tx.inventoryProduct.deleteMany({
+            where: { tenantId, id: { in: [...productIds] } },
+          });
+          count += products.length;
+        }
+
+        for (const variant of variantsToRemove) {
+          await tx.inventoryProductVariant.delete({ where: { id: variant.id } });
+          count += 1;
+          const remaining = await tx.inventoryProductVariant.count({
+            where: { productId: variant.productId, tenantId },
+          });
+          const productLevelStock = await tx.inventoryStock.count({
+            where: { productId: variant.productId, tenantId, variantId: null },
+          });
+          if (remaining === 0 && productLevelStock === 0) {
+            await tx.inventoryProduct.delete({ where: { id: variant.productId } });
+          } else if (remaining === 0) {
+            await tx.inventoryProduct.update({
+              where: { id: variant.productId },
+              data: { hasVariants: false },
+            });
+          }
+        }
+        return count;
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) throw error;
+      rethrowPrismaAsBadRequest(error, 'Could not delete the selected items.');
+    }
+
+    await this.audit.log({
+      actorId: user.id,
+      tenantId,
+      action: 'inventory.items_deleted',
+      entityType: 'inventory_product',
+      metadata: { productIds: [...productIds], variantIds: [...variantIds], deleted },
+      ipAddress: meta.ip,
+      userAgent: meta.ua,
+    });
+
+    return { deleted };
   }
 
   // ─── Products ──────────────────────────────────────────────

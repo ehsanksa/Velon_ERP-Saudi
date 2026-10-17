@@ -34,6 +34,7 @@ export type SalesInvoiceItem = {
   quantity: string | number;
   unitPrice: string | number;
   discount: string | number;
+  taxTreatment?: string | null;
   taxRate: string | number;
   taxAmount: string | number;
   lineSubtotal: string | number;

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Barcode, Package, Plus, Upload } from 'lucide-react';
+import { Barcode, Package, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { canManageInventory, normalizeVelonRole } from '@velon/shared';
 import { BarcodeManagementDialog } from '@/components/inventory/barcode-management-dialog';
+import { DeleteItemsDialog } from '@/components/inventory/delete-items-dialog';
 import { ExpiryDateFields } from '@/components/inventory/expiry-date-fields';
 import { ProductImportDialog } from '@/components/inventory/product-import-dialog';
 import {
@@ -39,6 +40,7 @@ import { getSessionMembershipRole } from '@/lib/auth/session';
 import { useT } from '@/lib/i18n/locale-context';
 import {
   createInventoryProduct,
+  deleteInventoryItems,
   getInventoryProduct,
   listInventoryCategories,
   listInventoryProducts,
@@ -75,6 +77,9 @@ function InventoryProductsPage() {
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleteIds, setDeleteIds] = useState<string[] | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [productMoreOpen, setProductMoreOpen] = useState(false);
   const [hasVariants, setHasVariants] = useState(false);
   const [variantAttributes, setVariantAttributes] = useState<VariantAttributeDraft[]>([]);
@@ -111,6 +116,40 @@ function InventoryProductsPage() {
   useEffect(() => {
     refresh().catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to load products'));
   }, [refresh]);
+
+  const allProductsSelected = products.length > 0 && selectedIds.length === products.length;
+  const deleteNames = products
+    .filter((product) => deleteIds?.includes(product.id))
+    .map((product) => product.name);
+
+  function toggleProduct(id: string, checked: boolean) {
+    setSelectedIds((current) =>
+      checked ? [...new Set([...current, id])] : current.filter((value) => value !== id),
+    );
+  }
+
+  async function confirmDeleteProducts() {
+    if (!deleteIds?.length) return;
+    setDeleting(true);
+    try {
+      const result = await deleteInventoryItems(deleteIds.map((id) => ({ productId: id })));
+      toast.success(
+        result.deleted === 1
+          ? t('Item deleted')
+          : t('{count} items deleted', { count: String(result.deleted) }),
+      );
+      if (editingId && deleteIds.includes(editingId)) resetForm();
+      setSelectedIds((current) => current.filter((id) => !deleteIds.includes(id)));
+      setDeleteIds(null);
+      await refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t('Could not delete the selected items'),
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function resetForm() {
     setEditingId(null);
@@ -524,6 +563,16 @@ function InventoryProductsPage() {
         <h2 className="text-lg font-semibold">{t('Product listing')}</h2>
         {canManage ? (
           <div className="flex flex-wrap gap-2">
+            {selectedIds.length > 0 ? (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setDeleteIds(selectedIds)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t('Delete selected')} ({selectedIds.length})
+              </Button>
+            ) : null}
             <Button
               size="sm"
               variant="outline"
@@ -550,6 +599,17 @@ function InventoryProductsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              {canManage ? (
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allProductsSelected}
+                    onCheckedChange={(checked) =>
+                      setSelectedIds(checked === true ? products.map((product) => product.id) : [])
+                    }
+                    aria-label={t('Delete selected')}
+                  />
+                </TableHead>
+              ) : null}
               <TableHead>{t('SKU')}</TableHead>
               <TableHead>{t('Name')}</TableHead>
               <TableHead>{t('Type')}</TableHead>
@@ -566,6 +626,15 @@ function InventoryProductsPage() {
           <TableBody>
             {products.map((p) => (
               <TableRow key={p.id}>
+                {canManage ? (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.includes(p.id)}
+                      onCheckedChange={(checked) => toggleProduct(p.id, checked === true)}
+                      aria-label={p.name}
+                    />
+                  </TableCell>
+                ) : null}
                 <TableCell className="font-mono text-xs">{p.sku}</TableCell>
                 <TableCell>{p.name}</TableCell>
                 <TableCell>
@@ -611,6 +680,14 @@ function InventoryProductsPage() {
                     >
                       {t('Edit')}
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-2"
+                      onClick={() => setDeleteIds([p.id])}
+                    >
+                      {t('Delete')}
+                    </Button>
                   </TableCell>
                 )}
               </TableRow>
@@ -618,7 +695,7 @@ function InventoryProductsPage() {
             {products.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={canManage ? 11 : 10}
+                  colSpan={canManage ? 12 : 10}
                   className="p-0"
                 >
                   <ModuleEmptyState
@@ -665,14 +742,28 @@ function InventoryProductsPage() {
               <span className="font-semibold tabular-nums">{Number(p.unitPrice).toFixed(2)}</span>
             </div>
             {canManage && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-3 w-full"
-                onClick={() => startEdit(p)}
-              >
-                Edit
-              </Button>
+              <div className="mt-3 flex gap-2">
+                <Checkbox
+                  checked={selectedIds.includes(p.id)}
+                  onCheckedChange={(checked) => toggleProduct(p.id, checked === true)}
+                  aria-label={p.name}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => startEdit(p)}
+                >
+                  {t('Edit')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDeleteIds([p.id])}
+                >
+                  {t('Delete')}
+                </Button>
+              </div>
             )}
           </Card>
         ))}
@@ -688,6 +779,14 @@ function InventoryProductsPage() {
           />
         )}
       </div>
+
+      <DeleteItemsDialog
+        count={deleteIds?.length ?? 0}
+        names={deleteNames}
+        pending={deleting}
+        onCancel={() => setDeleteIds(null)}
+        onConfirm={() => void confirmDeleteProducts()}
+      />
 
       <BarcodeManagementDialog
         open={barcodeOpen}

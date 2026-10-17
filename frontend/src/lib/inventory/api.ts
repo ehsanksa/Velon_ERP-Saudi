@@ -250,6 +250,15 @@ export async function createInventoryProduct(body: Record<string, unknown>) {
   return mapProduct(row);
 }
 
+export async function deleteInventoryItems(
+  items: Array<{ productId?: string; variantId?: string }>,
+) {
+  return apiFetch<{ deleted: number }>('/inventory/items/delete', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+}
+
 export async function updateInventoryProduct(id: string, body: Record<string, unknown>) {
   const row = await apiFetch<Record<string, unknown>>(`/inventory/products/${id}`, {
     method: 'PATCH',

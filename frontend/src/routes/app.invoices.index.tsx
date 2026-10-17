@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { canWriteSales, normalizeVelonRole } from '@velon/shared';
+import { DeleteInvoiceDialog } from '@/components/sales/delete-invoice-dialog';
 import { SalesInvoiceStatusBadge } from '@/components/sales/sales-invoice-status-badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,7 +17,14 @@ import {
 } from '@/components/ui/select';
 import { ModuleEmptyState } from '@/components/workspace/module-empty-state';
 import { useWorkspaceCurrency } from '@/contexts/workspace-currency';
-import { loadInvoices, type SalesInvoice, type SalesInvoiceStatus } from '@/lib/sales/invoice-api';
+import { getSessionMembershipRole } from '@/lib/auth/session';
+import { useT } from '@/lib/i18n/locale-context';
+import {
+  deleteInvoice,
+  loadInvoices,
+  type SalesInvoice,
+  type SalesInvoiceStatus,
+} from '@/lib/sales/invoice-api';
 
 const statuses: Array<SalesInvoiceStatus | 'all'> = [
   'all',
@@ -34,10 +43,14 @@ export const Route = createFileRoute('/app/invoices/')({
 
 function InvoicesPage() {
   const { formatCurrency } = useWorkspaceCurrency();
+  const t = useT();
+  const canWrite = canWriteSales(normalizeVelonRole(getSessionMembershipRole() ?? 'USER'));
   const [rows, setRows] = useState<SalesInvoice[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>('all');
   const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<SalesInvoice | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const refresh = useCallback(async () => {
     setBusy(true);
@@ -57,6 +70,21 @@ function InvoicesPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const onDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await deleteInvoice(pendingDelete.id);
+      toast.success(t('Invoice deleted'));
+      setPendingDelete(null);
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('Could not delete invoice'));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -130,20 +158,20 @@ function InvoicesPage() {
           {rows.map((invoice) => (
             <Card
               key={invoice.id}
-              className="p-4"
+              className="hover:bg-muted/40 relative p-4 transition-colors"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <Link
+                to="/app/invoices/$invoiceId"
+                params={{ invoiceId: invoice.id }}
+                aria-label={t('Open invoice {number}', { number: invoice.invoiceNumber })}
+                className="focus-visible:ring-ring absolute inset-0 z-0 rounded-xl focus-visible:ring-2"
+              />
+              <div className="pointer-events-none relative z-10 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <Link
-                    to="/app/invoices/$invoiceId"
-                    params={{ invoiceId: invoice.id }}
-                    className="font-medium hover:underline"
-                  >
-                    {invoice.invoiceNumber}
-                  </Link>
+                  <p className="font-medium">{invoice.invoiceNumber}</p>
                   <p className="text-muted-foreground text-sm">{invoice.customerName}</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <SalesInvoiceStatusBadge status={invoice.status} />
                   <div className="text-right">
                     <p className="font-semibold">{formatCurrency(Number(invoice.total))}</p>
@@ -151,12 +179,44 @@ function InvoicesPage() {
                       Due {formatCurrency(Number(invoice.balanceDue))}
                     </p>
                   </div>
+                  {canWrite ? (
+                    <div className="pointer-events-auto relative z-10 flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                      >
+                        <Link
+                          to="/app/invoices/create"
+                          search={{ invoiceId: invoice.id }}
+                        >
+                          <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                          {t('Edit')}
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => setPendingDelete(invoice)}
+                      >
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                        {t('Delete')}
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </Card>
           ))}
         </div>
       )}
+      <DeleteInvoiceDialog
+        invoiceNumber={pendingDelete?.invoiceNumber ?? null}
+        pending={deleting}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => void onDelete()}
+      />
     </div>
   );
 }

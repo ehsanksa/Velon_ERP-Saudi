@@ -26,13 +26,16 @@ import { loadCrmCustomers } from '@/lib/crm/api';
 import { useT } from '@/lib/i18n/locale-context';
 import {
   createInvoice,
+  loadInvoice,
   loadInvoiceBootstrap,
   openInvoicePdf,
   searchInvoiceProducts,
+  updateInvoice,
   type CreateInvoiceInput,
   type InvoiceBootstrap,
   type InvoiceLineInput,
   type InvoiceProductOption,
+  type SalesInvoice,
   type SalesInvoicePaymentMethod,
 } from '@/lib/sales/invoice-api';
 
@@ -61,7 +64,7 @@ function newLine(partial?: Partial<FormLine>): FormLine {
   };
 }
 
-export function InvoiceForm() {
+export function InvoiceForm({ invoiceId }: { invoiceId?: string }) {
   const navigate = useNavigate();
   const t = useT();
   const { formatCurrency } = useWorkspaceCurrency();
@@ -105,19 +108,81 @@ export function InvoiceForm() {
   const [productOptions, setProductOptions] = useState<InvoiceProductOption[]>([]);
   const [activeLineKey, setActiveLineKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editingNumber, setEditingNumber] = useState<string | null>(null);
+  const [loadingExisting, setLoadingExisting] = useState(Boolean(invoiceId));
+
+  const applyExisting = (invoice: SalesInvoice) => {
+    setEditingNumber(invoice.invoiceNumber);
+    setCustomerMode(invoice.customerId ? 'existing' : 'new');
+    setCustomerId(invoice.customerId ?? '');
+    setCustomerName(invoice.customerName);
+    setCustomerPhone(invoice.customerPhone ?? '');
+    setCustomerEmail(invoice.customerEmail ?? '');
+    setCustomerAddress(invoice.customerAddress ?? '');
+    setCustomerTaxId(invoice.customerTaxId ?? '');
+    setCustomerNotes(invoice.customerNotes ?? '');
+    setWarehouseId(invoice.warehouseId ?? '');
+    setIssueDate(invoice.issueDate.slice(0, 10));
+    setDueDate(invoice.dueDate ? invoice.dueDate.slice(0, 10) : '');
+    setPaymentMethod(invoice.paymentMethod ?? 'CASH');
+    setReferenceNumber(invoice.referenceNumber ?? '');
+    setNotes(invoice.notes ?? '');
+    setInvoiceDiscount(String(invoice.discount ?? 0));
+    setShippingCharges(String(invoice.shippingCharges ?? 0));
+    setAmountPaid(String(invoice.amountPaid ?? 0));
+    setLines(
+      invoice.items.length > 0
+        ? invoice.items.map((item) =>
+            newLine({
+              lineType: item.lineType,
+              productId: item.productId ?? undefined,
+              variantId: item.variantId ?? undefined,
+              itemName: item.itemName,
+              sku: item.sku ?? undefined,
+              description: item.description ?? undefined,
+              uom: item.uom ?? undefined,
+              quantity: Number(item.quantity),
+              unitPrice: Number(item.unitPrice),
+              discount: Number(item.discount),
+              taxTreatment:
+                item.taxTreatment || (Number(item.taxRate) > 0 ? 'STANDARD' : 'ZERO_RATED'),
+              taxRate: Number(item.taxRate),
+            }),
+          )
+        : [newLine()],
+    );
+  };
 
   useEffect(() => {
+    let cancelled = false;
+    setLoadingExisting(Boolean(invoiceId));
     void (async () => {
       try {
-        const [boot, cust] = await Promise.all([loadInvoiceBootstrap(), loadCrmCustomers('')]);
+        const [boot, cust, existing] = await Promise.all([
+          loadInvoiceBootstrap(),
+          loadCrmCustomers(''),
+          invoiceId ? loadInvoice(invoiceId) : Promise.resolve(null),
+        ]);
+        if (cancelled) return;
         setBootstrap(boot);
         setCustomers(cust);
-        if (boot.warehouses.length === 1) setWarehouseId(boot.warehouses[0]!.id);
+        if (existing) {
+          applyExisting(existing);
+        } else if (boot.warehouses.length === 1) {
+          setWarehouseId(boot.warehouses[0]!.id);
+        }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Could not load invoice form');
+        if (!cancelled) {
+          toast.error(err instanceof Error ? err.message : 'Could not load invoice form');
+        }
+      } finally {
+        if (!cancelled) setLoadingExisting(false);
       }
     })();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [invoiceId]);
 
   const filteredCustomers = useMemo(() => {
     const q = customerSearch.trim().toLowerCase();
@@ -240,12 +305,12 @@ export function InvoiceForm() {
     customerAddress: customerAddress || undefined,
     customerTaxId: customerTaxId || undefined,
     customerNotes: customerNotes || undefined,
-    createCustomer: customerMode === 'new',
+    createCustomer: customerMode === 'new' && !invoiceId,
     issueDate,
     dueDate: dueDate || undefined,
     paymentMethod,
     referenceNumber: referenceNumber || undefined,
-    notes: notes || undefined,
+    notes: notes.trim(),
     warehouseId: warehouseId || undefined,
     discount: Number(invoiceDiscount) || 0,
     shippingCharges: Number(shippingCharges) || 0,
@@ -280,7 +345,10 @@ export function InvoiceForm() {
     submittingRef.current = true;
     setBusy(true);
     try {
-      const invoice = await createInvoice(buildPayload(action));
+      const payload = buildPayload(action);
+      const invoice = invoiceId
+        ? await updateInvoice(invoiceId, payload)
+        : await createInvoice(payload);
       toast.success(t('Invoice {number} saved', { number: invoice.invoiceNumber }));
       if (action === 'save_print') {
         try {
@@ -297,6 +365,10 @@ export function InvoiceForm() {
       setBusy(false);
     }
   };
+
+  if (loadingExisting) {
+    return <p className="text-muted-foreground text-sm">{t('Loading invoice…')}</p>;
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
@@ -404,7 +476,7 @@ export function InvoiceForm() {
             <div>
               <Label>Invoice number</Label>
               <Input
-                value={bootstrap?.invoiceNumberPreview ?? 'Auto-generated'}
+                value={editingNumber ?? bootstrap?.invoiceNumberPreview ?? 'Auto-generated'}
                 disabled
               />
             </div>

@@ -148,6 +148,23 @@ describe('InventoryService', () => {
       );
     });
 
+    it('deletes the selected products', async () => {
+      client.inventoryProduct.findMany.mockResolvedValue([{ id: IDS.product }]);
+      client.inventoryProduct.deleteMany.mockResolvedValue({ count: 1 });
+      const result = await service.deleteItems(
+        tenantOwner(),
+        { items: [{ productId: IDS.product }] },
+        META,
+      );
+      expect(result.deleted).toBe(1);
+      expect(client.inventoryProduct.deleteMany).toHaveBeenCalledWith({
+        where: { tenantId: tenantOwner().tenantId, id: { in: [IDS.product] } },
+      });
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'inventory.items_deleted' }),
+      );
+    });
+
     it('returns not found for missing product', async () => {
       variantsService.getProductWithVariants.mockRejectedValue(
         new NotFoundException('Product not found.'),

@@ -13,6 +13,7 @@ type MockModel = {
   updateMany: jest.Mock;
   upsert: jest.Mock;
   delete: jest.Mock;
+  deleteMany: jest.Mock;
   count: jest.Mock;
 };
 
@@ -27,6 +28,7 @@ function model(): MockModel {
     updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     upsert: jest.fn(),
     delete: jest.fn(),
+    deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     count: jest.fn().mockResolvedValue(0),
   };
 }

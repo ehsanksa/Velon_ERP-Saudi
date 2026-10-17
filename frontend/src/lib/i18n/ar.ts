@@ -888,4 +888,31 @@ export const AR: Record<string, string> = {
     'المنتجات والمخزون المحفوظة ما زالت في قاعدة البيانات.',
   'The server could not complete this request. Refresh and try again.':
     'تعذر على الخادم إكمال الطلب. حدّث الصفحة وحاول مرة أخرى.',
+  'Delete this item?': 'حذف هذا الصنف؟',
+  'Delete {count} items?': 'حذف {count} أصناف؟',
+  'This removes the selected products or variants and their on-hand stock. Past invoices keep their saved line text.':
+    'يحذف هذا المنتجات أو المتغيرات المحددة ومخزونها المتاح. تحتفظ الفواتير السابقة بنص البنود المحفوظ.',
+  Delete: 'حذف',
+  'Deleting…': 'جارٍ الحذف…',
+  'Item deleted': 'تم حذف الصنف',
+  '{count} items deleted': 'تم حذف {count} أصناف',
+  'Delete selected': 'حذف المحدد',
+  'Could not delete the selected items': 'تعذر حذف الأصناف المحددة',
+  Cancel: 'إلغاء',
+  'Locating…': 'جارٍ تحديد الموقع…',
+  'Location off': 'الموقع متوقف',
+  'Location unavailable': 'الموقع غير متاح',
+  'Allow location to show your city': 'اسمح بالموقع لعرض مدينتك',
+  'Delete this invoice?': 'حذف هذه الفاتورة؟',
+  'This removes {number}. Stock taken for this invoice is returned, and the invoice cannot be opened again.':
+    'يحذف هذا {number}. يُعاد المخزون الذي خُصم لهذه الفاتورة، ولن يمكن فتحها مرة أخرى.',
+  'Invoice deleted': 'تم حذف الفاتورة',
+  'Could not delete invoice': 'تعذر حذف الفاتورة',
+  'Edit Invoice': 'تعديل الفاتورة',
+  'Update customer, lines, and totals': 'حدّث العميل والبنود والإجمالي',
+  'Edit invoice': 'تعديل الفاتورة',
+  'Update the customer, lines, and totals. The invoice number stays the same.':
+    'حدّث العميل والبنود والإجمالي. يبقى رقم الفاتورة كما هو.',
+  'Open invoice {number}': 'فتح الفاتورة {number}',
+  'Loading invoice…': 'جارٍ تحميل الفاتورة…',
 };

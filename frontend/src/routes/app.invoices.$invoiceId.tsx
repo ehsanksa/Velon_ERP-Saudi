@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { canWriteSales, formatHijriDate, normalizeVelonRole } from '@velon/shared';
+import { DeleteInvoiceDialog } from '@/components/sales/delete-invoice-dialog';
 import { InvoiceDocumentView } from '@/components/sales/invoice-document';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getSessionMembershipRole } from '@/lib/auth/session';
+import { useT } from '@/lib/i18n/locale-context';
 import {
   cancelInvoice,
   deleteInvoice,
@@ -51,7 +53,10 @@ function InvoiceDetailPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<SalesInvoicePaymentMethod>('CASH');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const canWrite = canWriteSales(normalizeVelonRole(getSessionMembershipRole() ?? 'USER'));
+  const t = useT();
 
   const refresh = useCallback(async () => {
     const row = await loadInvoice(invoice.id);
@@ -129,8 +134,12 @@ function InvoiceDetailPage() {
             : undefined
         }
         onEdit={
-          canWrite && invoice.status === 'DRAFT'
-            ? () => void navigate({ to: '/app/invoices/create' })
+          canWrite
+            ? () =>
+                void navigate({
+                  to: '/app/invoices/create',
+                  search: { invoiceId: invoice.id },
+                })
             : undefined
         }
         onDuplicate={
@@ -163,15 +172,7 @@ function InvoiceDetailPage() {
               }
             : undefined
         }
-        onDelete={
-          canWrite && invoice.status === 'DRAFT'
-            ? async () => {
-                await deleteInvoice(invoice.id);
-                toast.success('Draft deleted');
-                await navigate({ to: '/app/invoices' });
-              }
-            : undefined
-        }
+        onDelete={canWrite ? () => setConfirmDelete(true) : undefined}
         onEmail={canWrite ? () => void onEmail() : undefined}
       />
 
@@ -222,6 +223,23 @@ function InvoiceDetailPage() {
           </div>
         </Card>
       ) : null}
+      <DeleteInvoiceDialog
+        invoiceNumber={confirmDelete ? invoice.invoiceNumber : null}
+        pending={deleting}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => {
+          setDeleting(true);
+          void deleteInvoice(invoice.id)
+            .then(async () => {
+              toast.success(t('Invoice deleted'));
+              await navigate({ to: '/app/invoices' });
+            })
+            .catch((err: unknown) => {
+              toast.error(err instanceof Error ? err.message : t('Could not delete invoice'));
+              setDeleting(false);
+            });
+        }}
+      />
     </div>
   );
 }

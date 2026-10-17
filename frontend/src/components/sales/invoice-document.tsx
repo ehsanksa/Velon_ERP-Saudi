@@ -290,7 +290,7 @@ export function InvoiceDocumentView({
               variant="destructive"
               onClick={onDelete}
             >
-              Delete draft
+              Delete
             </Button>
           ) : null}
         </div>

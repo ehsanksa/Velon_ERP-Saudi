@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -656,4 +657,25 @@ export class UpdateStockLevelsDto {
   @IsOptional()
   @IsString()
   variantParent?: string;
+}
+
+export class DeleteInventoryItemDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  productId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+}
+
+export class DeleteInventoryItemsDto {
+  @ApiProperty({ type: [DeleteInventoryItemDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => DeleteInventoryItemDto)
+  items!: DeleteInventoryItemDto[];
 }

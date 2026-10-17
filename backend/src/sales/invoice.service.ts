@@ -726,11 +726,253 @@ export class InvoiceService {
   async update(user: AuthenticatedUser, id: string, dto: UpdateSalesInvoiceDto, meta: AuditMeta) {
     this.assertWrite(user);
     const existing = await this.getById(user, id);
-    if (existing.status !== SalesInvoiceStatus.DRAFT) {
-      throw new BadRequestException('Only draft invoices can be edited.');
+    const { tenantId, workspaceId } = this.requireWorkspace(user);
+    const workspace = await this.prisma.client.workspace.findFirst({
+      where: { id: workspaceId, tenantId },
+    });
+    if (!workspace) throw new BadRequestException('Workspace does not match tenant context.');
+
+    const customer = await this.resolveCustomer(user, dto);
+    const issueDate = dto.issueDate ? new Date(dto.issueDate) : new Date(existing.issueDate);
+    const dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
+    const warehouseId = dto.warehouseId ?? existing.warehouseId ?? undefined;
+    const pricesIncludeVat = dto.pricesIncludeVat ?? existing.pricesIncludeVat;
+
+    const resolvedLines = await this.buildResolvedLines(
+      user,
+      { ...dto, pricesIncludeVat },
+      warehouseId,
+      issueDate,
+    );
+    if (
+      dto.action !== 'draft' &&
+      resolvedLines.some((line) => line.taxTreatment === 'REVIEW_REQUIRED')
+    ) {
+      throw new BadRequestException(
+        'Select a VAT treatment for every line before issuing the invoice. Drafts can be saved for review.',
+      );
     }
-    await this.remove(user, id, meta);
-    return this.create(user, dto, meta);
+
+    const lineInput = resolvedLines.map((line) => ({
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      discount: line.discount,
+      taxRate: line.taxRate,
+    }));
+    const shippingCharges = dto.shippingCharges ?? Number(existing.shippingCharges);
+    const roundingAdjustment = dto.roundingAdjustment ?? Number(existing.roundingAdjustment);
+    const invoiceDiscount = dto.discount ?? Number(existing.discount);
+
+    let subtotal: number;
+    let taxAmount: number;
+    let grossTotal: number;
+    if (pricesIncludeVat) {
+      if (invoiceDiscount > 0) {
+        throw new BadRequestException(
+          'Put discounts on each line when prices include VAT so the VAT amount stays attributable.',
+        );
+      }
+      subtotal =
+        Math.round(resolvedLines.reduce((sum, line) => sum + line.lineSubtotal, 0) * 100) / 100;
+      taxAmount =
+        Math.round(resolvedLines.reduce((sum, line) => sum + line.taxAmount, 0) * 100) / 100;
+      grossTotal =
+        Math.round(
+          (resolvedLines.reduce((sum, line) => sum + line.lineTotal, 0) +
+            shippingCharges +
+            roundingAdjustment) *
+            100,
+        ) / 100;
+    } else {
+      const quoted = calculateInvoiceTotals({
+        lines: lineInput,
+        invoiceDiscount,
+        shippingCharges,
+        roundingAdjustment,
+        amountPaid: 0,
+      });
+      subtotal = quoted.subtotal;
+      taxAmount = quoted.taxAmount;
+      grossTotal = quoted.total;
+    }
+
+    const recordedPaid =
+      Math.round(
+        existing.payments.reduce((sum, payment) => sum + Number(payment.amount), 0) * 100,
+      ) / 100;
+    const requestedPaid =
+      dto.action === 'save_paid' ? grossTotal : Math.max(0, dto.amountPaid ?? recordedPaid);
+    if (requestedPaid > grossTotal + 0.01) {
+      throw new BadRequestException(
+        recordedPaid > 0
+          ? 'Invoice total is less than payments already recorded.'
+          : 'Amount paid cannot exceed the invoice total.',
+      );
+    }
+    if (requestedPaid + 0.009 < recordedPaid) {
+      throw new BadRequestException('Amount paid cannot be less than payments already recorded.');
+    }
+    const paymentToAdd = Math.round((requestedPaid - recordedPaid) * 100) / 100;
+    const paidAmount = requestedPaid;
+    const balanceDue = Math.max(0, Math.round((grossTotal - paidAmount) * 100) / 100);
+    const status = this.resolveTargetStatus(
+      dto.action,
+      { total: grossTotal, balanceDue, amountPaid: paidAmount },
+      dueDate,
+    );
+    const deductStock = shouldDeductStock(status);
+    if (deductStock) {
+      const missing = resolvedLines.filter((line) => line.tracksStock && !line.stockId);
+      if (missing.length > 0) {
+        throw new BadRequestException(
+          `No stock is recorded for ${missing.map((line) => line.itemName).join(', ')} in the selected warehouse.`,
+        );
+      }
+    }
+
+    let salespersonId = dto.salespersonId ?? existing.salespersonId ?? undefined;
+    let salespersonName = existing.salespersonName ?? undefined;
+    if (dto.salespersonId) {
+      const sp = await this.prisma.client.user.findFirst({ where: { id: dto.salespersonId } });
+      salespersonName = sp?.name ?? sp?.email ?? undefined;
+      salespersonId = dto.salespersonId;
+    }
+
+    const profile = await this.prisma.client.companyProfile.findUnique({ where: { tenantId } });
+    const sellerName = profile?.legalNameAr?.trim() || profile?.legalName?.trim() || '';
+    const vatNumber = profile?.vatRegistrationNumber?.trim() || profile?.taxId?.trim() || '';
+    const zatcaTimestamp = issueDate.toISOString();
+    const zatcaTotal = grossTotal.toFixed(2);
+    const zatcaVat = taxAmount.toFixed(2);
+    const readiness = assessZatcaPhase1Readiness({
+      sellerName,
+      vatNumber,
+      timestamp: zatcaTimestamp,
+      totalWithVat: zatcaTotal,
+      vatAmount: zatcaVat,
+    });
+    const zatcaQrPayload = readiness.readyForPhase1Qr
+      ? buildZatcaTlvBase64({
+          sellerName,
+          vatNumber,
+          timestamp: zatcaTimestamp,
+          totalWithVat: zatcaTotal,
+          vatAmount: zatcaVat,
+        })
+      : null;
+    const zatcaStatus = readiness.readyForPhase1Qr ? 'QR_READY' : 'PENDING_SELLER_VAT';
+    const zatcaStatusDetail = readiness.readyForPhase1Qr
+      ? 'Phase 1 QR generated locally. This is not a ZATCA clearance or reporting confirmation.'
+      : `Phase 1 QR was not generated. Missing: ${readiness.missing.join(', ')}.`;
+
+    const updated = await this.prisma.client.$transaction(async (tx) => {
+      if (existing.stockDeductedAt) {
+        await this.reverseStock(tenantId, existing.items, tx);
+      }
+      const stockMovements = deductStock
+        ? await this.applyStockDeduction(tenantId, resolvedLines, tx)
+        : new Map<number, Prisma.InputJsonValue>();
+
+      if (paymentToAdd > 0.009) {
+        await tx.salesInvoicePayment.create({
+          data: {
+            tenantId,
+            invoiceId: existing.id,
+            amount: paymentToAdd,
+            method: dto.paymentMethod ?? existing.paymentMethod ?? SalesInvoicePaymentMethod.CASH,
+            reference: dto.referenceNumber ?? existing.referenceNumber,
+            recordedById: user.id,
+          },
+        });
+      }
+
+      return tx.salesInvoice.update({
+        where: { id: existing.id },
+        data: {
+          customerId: customer.customerId ?? null,
+          customerName: customer.customerName,
+          customerPhone: customer.customerPhone ?? null,
+          customerEmail: customer.customerEmail ?? null,
+          customerAddress: customer.customerAddress ?? null,
+          customerTaxId: customer.customerTaxId ?? null,
+          customerNotes: customer.customerNotes ?? null,
+          issueDate,
+          dueDate,
+          status,
+          paymentMethod: dto.paymentMethod ?? existing.paymentMethod,
+          salespersonId: salespersonId ?? null,
+          salespersonName: salespersonName ?? null,
+          referenceNumber: dto.referenceNumber ?? existing.referenceNumber,
+          notes: dto.notes ?? existing.notes,
+          footerNotes: dto.footerNotes ?? existing.footerNotes,
+          warehouseId: warehouseId ?? null,
+          currency: existing.currency,
+          invoiceKind: customer.customerTaxId ? 'TAX_INVOICE' : 'SIMPLIFIED_TAX_INVOICE',
+          pricesIncludeVat,
+          zatcaQrPayload,
+          zatcaStatus,
+          zatcaStatusDetail,
+          subtotal,
+          discount: invoiceDiscount,
+          taxAmount,
+          shippingCharges,
+          roundingAdjustment,
+          total: grossTotal,
+          amountPaid: paidAmount,
+          balanceDue,
+          stockDeductedAt: deductStock ? new Date() : null,
+          updatedById: user.id,
+          items: {
+            deleteMany: {},
+            create: resolvedLines.map((line) => ({
+              tenantId,
+              lineType: line.lineType,
+              productId: line.productId,
+              variantId: line.variantId,
+              stockId: line.stockId,
+              itemName: line.itemName,
+              sku: line.sku,
+              description: line.description,
+              uom: line.uom,
+              quantity: line.quantity,
+              unitPrice: line.unitPrice,
+              discount: line.discount,
+              taxTreatment: line.taxTreatment,
+              taxRate: line.taxRate,
+              taxAmount: line.taxAmount,
+              lineSubtotal: line.lineSubtotal,
+              lineTotal: line.lineTotal,
+              position: line.position,
+              stockMovement: stockMovements.get(line.position),
+            })),
+          },
+        },
+        include: {
+          items: { orderBy: { position: 'asc' } },
+          payments: true,
+          customer: true,
+          warehouse: true,
+          salesperson: true,
+        },
+      });
+    });
+
+    await this.audit.log({
+      actorId: user.id,
+      tenantId,
+      action: 'sales.invoice_updated',
+      entityType: 'sales_invoice',
+      entityId: updated.id,
+      metadata: {
+        invoiceNumber: updated.invoiceNumber,
+        status: updated.status,
+        total: updated.total,
+      },
+      ipAddress: meta.ip,
+      userAgent: meta.ua,
+    });
+
+    return updated;
   }
 
   async recordPayment(
@@ -883,10 +1125,12 @@ export class InvoiceService {
     this.assertWrite(user);
     const { tenantId } = this.requireWorkspace(user);
     const invoice = await this.getById(user, id);
-    if (invoice.status !== SalesInvoiceStatus.DRAFT) {
-      throw new BadRequestException('Only draft invoices can be deleted.');
-    }
-    await this.prisma.client.salesInvoice.delete({ where: { id: invoice.id } });
+    await this.prisma.client.$transaction(async (tx) => {
+      if (invoice.stockDeductedAt) {
+        await this.reverseStock(tenantId, invoice.items, tx);
+      }
+      await tx.salesInvoice.delete({ where: { id: invoice.id } });
+    });
     await this.audit.log({
       actorId: user.id,
       tenantId,

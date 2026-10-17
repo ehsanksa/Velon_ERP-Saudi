@@ -9,9 +9,11 @@ import {
   Plus,
   RefreshCw,
   ScanBarcode,
+  Trash2,
   TrendingDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { DeleteItemsDialog } from '@/components/inventory/delete-items-dialog';
 import { ExpiryDateFields, ExpiryStatusBadge } from '@/components/inventory/expiry-date-fields';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,6 +49,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWorkspaceCurrency } from '@/contexts/workspace-currency';
 import { useT } from '@/lib/i18n/locale-context';
 import {
+  deleteInventoryItems,
   getInventoryProduct,
   listInventoryProducts,
   listInventoryWarehouses,
@@ -129,6 +132,9 @@ function InventoryPage() {
   const loaded = Route.useLoaderData();
   const [items, setItems] = useState<InventoryRecord[]>(loaded);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleteIds, setDeleteIds] = useState<string[] | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,6 +329,43 @@ function InventoryPage() {
     setExpiryDate(item.expiryDate ?? '');
     setVariantParent(item.variantParent ?? '');
     setOpen(true);
+  }
+
+  const allItemsSelected = sortedItems.length > 0 && selectedIds.length === sortedItems.length;
+  const deleteTargets = items.filter((item) => deleteIds?.includes(item.id));
+
+  function toggleItem(id: string, checked: boolean) {
+    setSelectedIds((current) =>
+      checked ? [...new Set([...current, id])] : current.filter((value) => value !== id),
+    );
+  }
+
+  async function confirmDeleteItems() {
+    if (!deleteTargets.length) return;
+    setDeleting(true);
+    try {
+      const result = await deleteInventoryItems(
+        deleteTargets.map((item) =>
+          item.variantId
+            ? { productId: item.productId, variantId: item.variantId }
+            : { productId: item.productId },
+        ),
+      );
+      toast.success(
+        result.deleted === 1
+          ? t('Item deleted')
+          : t('{count} items deleted', { count: String(result.deleted) }),
+      );
+      setSelectedIds((current) => current.filter((id) => !deleteIds?.includes(id)));
+      setDeleteIds(null);
+      await router.invalidate();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t('Could not delete the selected items'),
+      );
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function handleSaveInventory() {
@@ -839,6 +882,16 @@ function InventoryPage() {
                 >
                   <Plus className="mr-1.5 h-4 w-4" /> {t('Add stock')}
                 </Button>
+                {selectedIds.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => setDeleteIds(selectedIds)}
+                  >
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                    {t('Delete selected')} ({selectedIds.length})
+                  </Button>
+                ) : null}
               </div>
             </div>
 
@@ -846,6 +899,15 @@ function InventoryPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allItemsSelected}
+                        onCheckedChange={(checked) =>
+                          setSelectedIds(checked === true ? sortedItems.map((item) => item.id) : [])
+                        }
+                        aria-label={t('Delete selected')}
+                      />
+                    </TableHead>
                     <TableHead className="w-[100px] text-[10px] tracking-wider uppercase">
                       SKU
                     </TableHead>
@@ -879,6 +941,13 @@ function InventoryPage() {
                 <TableBody>
                   {sortedItems.map((item) => (
                     <TableRow key={item.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(item.id)}
+                          onCheckedChange={(checked) => toggleItem(item.id, checked === true)}
+                          aria-label={item.name}
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{item.sku}</TableCell>
                       <TableCell>
                         <div className="font-medium">{item.name}</div>
@@ -951,6 +1020,15 @@ function InventoryPage() {
                           <Pencil className="mr-1 h-3.5 w-3.5" />{' '}
                           {item.hasStock === false ? t('Add stock') : 'Edit'}
                         </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive h-8 rounded-lg px-2 text-xs"
+                          onClick={() => setDeleteIds([item.id])}
+                        >
+                          <Trash2 className="mr-1 h-3.5 w-3.5" /> {t('Delete')}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -965,6 +1043,11 @@ function InventoryPage() {
                   className="border-border bg-background rounded-xl border p-4"
                 >
                   <div className="flex items-center justify-between gap-2">
+                    <Checkbox
+                      checked={selectedIds.includes(item.id)}
+                      onCheckedChange={(checked) => toggleItem(item.id, checked === true)}
+                      aria-label={item.name}
+                    />
                     <Package className="text-muted-foreground h-4 w-4 shrink-0" />
                     <Badge
                       variant="outline"
@@ -991,15 +1074,26 @@ function InventoryPage() {
                       Safety {item.safetyStock} · Reorder {item.reorderPoint}
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3 h-8 rounded-lg text-xs"
-                    onClick={() => openEditDialog(item)}
-                  >
-                    <Pencil className="mr-1 h-3.5 w-3.5" /> Edit item
-                  </Button>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 flex-1 rounded-lg text-xs"
+                      onClick={() => openEditDialog(item)}
+                    >
+                      <Pencil className="mr-1 h-3.5 w-3.5" /> Edit item
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive h-8 rounded-lg text-xs"
+                      onClick={() => setDeleteIds([item.id])}
+                    >
+                      {t('Delete')}
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1110,6 +1204,13 @@ function InventoryPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <DeleteItemsDialog
+        count={deleteIds?.length ?? 0}
+        names={deleteTargets.map((item) => item.name)}
+        pending={deleting}
+        onCancel={() => setDeleteIds(null)}
+        onConfirm={() => void confirmDeleteItems()}
+      />
     </div>
   );
 }

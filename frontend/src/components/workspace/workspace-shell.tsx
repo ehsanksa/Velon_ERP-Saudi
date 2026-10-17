@@ -9,11 +9,7 @@ import {
 import { QuickCreateFab } from '@/components/workspace/quick-create-fab';
 import { WorkspaceSearch } from '@/components/workspace/workspace-search';
 import { WorkspaceUserMenu } from '@/components/workspace/workspace-user-menu';
-import {
-  useWorkspaceCurrency,
-  workspaceBooksCurrencyLine,
-  WorkspaceCurrencyProvider,
-} from '@/contexts/workspace-currency';
+import { WorkspaceCurrencyProvider } from '@/contexts/workspace-currency';
 import {
   useWorkspacePreferences,
   WorkspacePreferencesProvider,
@@ -22,6 +18,7 @@ import {
   useWorkspaceUserProfile,
   WorkspaceUserProfileProvider,
 } from '@/contexts/workspace-user-profile';
+import { useDeviceLocation } from '@/hooks/use-device-location';
 import { usePlatformRealtime } from '@/hooks/use-platform-realtime';
 import { useT } from '@/lib/i18n/locale-context';
 import { normalizeExternalUrl, type LogoNav } from '@/lib/shared/logo-navigation';
@@ -43,53 +40,55 @@ function WorkspaceHeaderToolbar({
   notifications: NotificationPreview[];
   onMarkAllRead: () => void | Promise<void>;
 }) {
-  const { preset, customSymbol } = useWorkspaceCurrency();
-  const { theme, toggleTheme, city, country, region } = useWorkspacePreferences();
-  const books = workspaceBooksCurrencyLine(preset, customSymbol);
+  const { theme, toggleTheme } = useWorkspacePreferences();
+  const { place, status, refresh } = useDeviceLocation();
   const t = useT();
-  const locationPrimary = `${city}, ${country}`;
-  const locationTitle = `${locationPrimary} · ${region}`;
+  const locationPrimary = place
+    ? place.city
+    : status === 'denied'
+      ? t('Location off')
+      : status === 'unavailable'
+        ? t('Location unavailable')
+        : t('Locating…');
+  const locationSecondary = place
+    ? [place.region, place.country].filter(Boolean).join(' · ')
+    : status === 'denied'
+      ? t('Allow location to show your city')
+      : '';
+  const locationTitle = place
+    ? `${[place.city, place.region, place.country].filter(Boolean).join(', ')} · ${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`
+    : locationPrimary;
 
   return (
     <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2 md:gap-3">
-      <span
-        className="border-border bg-muted/50 text-foreground rounded-md border px-2 py-1 font-mono text-[10px] font-semibold md:hidden"
-        title={books}
-      >
-        {preset === 'CUSTOM' ? customSymbol.trim() || '?' : preset}
-      </span>
-      <div className="hidden min-w-0 flex-col items-end text-right 2xl:flex">
-        <span className="text-muted-foreground text-[9px] font-medium tracking-wider uppercase">
-          {t('Books in')}
-        </span>
-        <span
-          className="max-w-[220px] truncate text-[11px] leading-tight font-semibold"
-          title={books}
-        >
-          {books}
-        </span>
-      </div>
-      <div
-        className="bg-border hidden h-8 w-px 2xl:block"
-        aria-hidden
-      />
-      <div
-        className="text-muted-foreground hidden min-w-0 items-center gap-1.5 2xl:flex"
+      <button
+        type="button"
+        className="text-muted-foreground hover:bg-muted/60 flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1"
         title={locationTitle}
+        onClick={refresh}
+        aria-label={locationTitle}
       >
+        <span
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+            status === 'live' ? 'bg-emerald-500' : 'bg-muted-foreground/40'
+          }`}
+          aria-hidden
+        />
         <MapPin
           className="h-3.5 w-3.5 shrink-0"
           aria-hidden
         />
-        <div className="flex min-w-0 flex-col items-end text-right">
-          <span className="text-foreground max-w-[min(42vw,200px)] truncate text-[11px] font-medium">
+        <span className="flex min-w-0 flex-col items-end text-right">
+          <span className="text-foreground max-w-[min(42vw,220px)] truncate text-[11px] font-medium">
             {locationPrimary}
           </span>
-          <span className="text-muted-foreground max-w-[min(42vw,200px)] truncate text-[10px]">
-            {region}
-          </span>
-        </div>
-      </div>
+          {locationSecondary ? (
+            <span className="text-muted-foreground max-w-[min(42vw,220px)] truncate text-[10px]">
+              {locationSecondary}
+            </span>
+          ) : null}
+        </span>
+      </button>
       <Button
         variant="ghost"
         size="icon"

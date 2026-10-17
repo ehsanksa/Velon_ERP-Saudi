@@ -29,6 +29,7 @@ import {
   CreateInventoryCategoryDto,
   CreateInventoryProductDto,
   CreateInventoryWarehouseDto,
+  DeleteInventoryItemsDto,
   ReceiveInventoryStockDto,
   TransferInventoryStockDto,
   UpdateInventoryCategoryDto,
@@ -182,6 +183,16 @@ export class InventoryController {
     @Body() dto: UpdateInventoryWarehouseDto,
   ) {
     return this.inventory.updateWarehouse(user, id, dto);
+  }
+
+  @Post('items/delete')
+  @RequirePermission('inventory:write', 'inventory:*')
+  deleteItems(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: DeleteInventoryItemsDto,
+    @Req() req: Request,
+  ) {
+    return this.inventory.deleteItems(user, dto, reqMeta(req));
   }
 
   @Get('stock')
